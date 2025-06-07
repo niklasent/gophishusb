@@ -1,14 +1,11 @@
 package models
 
 import (
-	"crypto/rand"
 	"encoding/json"
-	"math/big"
 	"net"
 	"time"
 
-	log "github.com/gophish/gophish/logger"
-	"github.com/jinzhu/gorm"
+	log "github.com/niklasent/gophishusb/logger"
 	"github.com/oschwald/maxminddb-golang"
 )
 
@@ -27,19 +24,17 @@ type Result struct {
 	Id           int64     `json:"-"`
 	CampaignId   int64     `json:"-"`
 	UserId       int64     `json:"-"`
-	RId          string    `json:"id"`
+	TargetID     int64     `json:"target_id"`
 	Status       string    `json:"status" sql:"not null"`
 	IP           string    `json:"ip"`
 	Latitude     float64   `json:"latitude"`
 	Longitude    float64   `json:"longitude"`
-	SendDate     time.Time `json:"send_date"`
-	Reported     bool      `json:"reported" sql:"not null"`
 	ModifiedDate time.Time `json:"modified_date"`
 	BaseRecipient
 }
 
 func (r *Result) createEvent(status string, details interface{}) (*Event, error) {
-	e := &Event{Email: r.Email, Message: status}
+	e := &Event{Message: status}
 	if details != nil {
 		dj, err := json.Marshal(details)
 		if err != nil {
@@ -51,98 +46,61 @@ func (r *Result) createEvent(status string, details interface{}) (*Event, error)
 	return e, nil
 }
 
-// HandleEmailSent updates a Result to indicate that the email has been
-// successfully sent to the remote SMTP server
-func (r *Result) HandleEmailSent() error {
-	event, err := r.createEvent(EventSent, nil)
-	if err != nil {
-		return err
-	}
-	r.SendDate = event.Time
-	r.Status = EventSent
-	r.ModifiedDate = event.Time
-	return db.Save(r).Error
-}
-
-// HandleEmailError updates a Result to indicate that there was an error when
-// attempting to send the email to the remote SMTP server.
-func (r *Result) HandleEmailError(err error) error {
-	event, err := r.createEvent(EventSendingError, EventError{Error: err.Error()})
-	if err != nil {
-		return err
-	}
-	r.Status = Error
-	r.ModifiedDate = event.Time
-	return db.Save(r).Error
-}
-
-// HandleEmailBackoff updates a Result to indicate that the email received a
-// temporary error and needs to be retried
-func (r *Result) HandleEmailBackoff(err error, sendDate time.Time) error {
-	event, err := r.createEvent(EventSendingError, EventError{Error: err.Error()})
-	if err != nil {
-		return err
-	}
-	r.Status = StatusRetry
-	r.SendDate = sendDate
-	r.ModifiedDate = event.Time
-	return db.Save(r).Error
-}
-
-// HandleEmailOpened updates a Result in the case where the recipient opened the
-// email.
-func (r *Result) HandleEmailOpened(details EventDetails) error {
-	event, err := r.createEvent(EventOpened, details)
-	if err != nil {
-		return err
-	}
-	// Don't update the status if the user already clicked the link
-	// or submitted data to the campaign
-	if r.Status == EventClicked || r.Status == EventDataSubmit {
+// HandleMounted updates a Result in the case where the recipient mounted a USB.
+func (r *Result) HandleMounted(details EventDetails) error {
+	// Don't create an event of the user already mounted a USB
+	if r.Status == EventMounted {
 		return nil
 	}
-	r.Status = EventOpened
-	r.ModifiedDate = event.Time
-	return db.Save(r).Error
-}
-
-// HandleClickedLink updates a Result in the case where the recipient clicked
-// the link in an email.
-func (r *Result) HandleClickedLink(details EventDetails) error {
-	event, err := r.createEvent(EventClicked, details)
+	event, err := r.createEvent(EventMounted, details)
 	if err != nil {
 		return err
 	}
-	// Don't update the status if the user has already submitted data via the
-	// landing page form.
-	if r.Status == EventDataSubmit {
+	// Don't update the status if the user already opened a file
+	if r.Status == EventOpenedMacro || r.Status == EventOpenedExec || r.Status == EventOpenedAll {
 		return nil
 	}
-	r.Status = EventClicked
+	r.Status = EventMounted
 	r.ModifiedDate = event.Time
 	return db.Save(r).Error
 }
 
-// HandleFormSubmit updates a Result in the case where the recipient submitted
-// credentials to the form on a Landing Page.
-func (r *Result) HandleFormSubmit(details EventDetails) error {
-	event, err := r.createEvent(EventDataSubmit, details)
+// HandleOpenedMacro updates a Result in the case where the recipient opened the macro.
+func (r *Result) HandleOpenedMacro(details EventDetails) error {
+	event, err := r.createEvent(EventOpenedMacro, details)
 	if err != nil {
 		return err
 	}
-	r.Status = EventDataSubmit
+	// Don't update the status if the user has already opened the macro.
+	if r.Status == EventOpenedMacro || r.Status == EventOpenedAll {
+		return nil
+	}
+	// Update the status to OpenedAll if the user has already opened the executable.
+	if r.Status == EventOpenedExec {
+		r.Status = EventOpenedAll
+	} else {
+		r.Status = EventOpenedMacro
+	}
 	r.ModifiedDate = event.Time
 	return db.Save(r).Error
 }
 
-// HandleEmailReport updates a Result in the case where they report a simulated
-// phishing email using the HTTP handler.
-func (r *Result) HandleEmailReport(details EventDetails) error {
-	event, err := r.createEvent(EventReported, details)
+// HandleOpenedExec updates a Result in the case where the recipient opened the executable.
+func (r *Result) HandleOpenedExec(details EventDetails) error {
+	event, err := r.createEvent(EventOpenedExec, details)
 	if err != nil {
 		return err
 	}
-	r.Reported = true
+	// Don't update the status if the user has already opened the executable.
+	if r.Status == EventOpenedExec || r.Status == EventOpenedAll {
+		return nil
+	}
+	// Update the status to OpenedAll if the user has already opened the macro.
+	if r.Status == EventOpenedMacro {
+		r.Status = EventOpenedAll
+	} else {
+		r.Status = EventOpenedExec
+	}
 	r.ModifiedDate = event.Time
 	return db.Save(r).Error
 }
@@ -170,41 +128,35 @@ func (r *Result) UpdateGeo(addr string) error {
 	return db.Save(r).Error
 }
 
-func generateResultId() (string, error) {
-	const alphaNum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	k := make([]byte, 7)
-	for i := range k {
-		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphaNum))))
-		if err != nil {
-			return "", err
-		}
-		k[i] = alphaNum[idx.Int64()]
-	}
-	return string(k), nil
-}
-
-// GenerateId generates a unique key to represent the result
-// in the database
-func (r *Result) GenerateId(tx *gorm.DB) error {
-	// Keep trying until we generate a unique key (shouldn't take more than one or two iterations)
-	for {
-		rid, err := generateResultId()
-		if err != nil {
-			return err
-		}
-		r.RId = rid
-		err = tx.Table("results").Where("r_id=?", r.RId).First(&Result{}).Error
-		if err == gorm.ErrRecordNotFound {
-			break
-		}
-	}
-	return nil
-}
-
 // GetResult returns the Result object from the database
 // given the ResultId
 func GetResult(rid string) (Result, error) {
 	r := Result{}
 	err := db.Where("r_id=?", rid).First(&r).Error
 	return r, err
+}
+
+// GetActiveResultsByTargetId returns all results from active campaign for a given target
+func GetActiveResultsByTargetId(tid int64) ([]Result, error) {
+	// Get every result for target
+	rs := []Result{}
+	err := db.Where("target_id = ?", tid).Find(&rs).Error
+	if err != nil {
+		log.Error(err)
+		return rs, err
+	}
+	// Dismiss all results from inactive campaigns
+	ars := []Result{}
+	for _, r := range rs {
+		c := Campaign{}
+		err = db.Where("id = ?", r.CampaignId).Find(&c).Error
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		if c.Status == CampaignInProgress {
+			ars = append(ars, r)
+		}
+	}
+	return ars, err
 }

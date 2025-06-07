@@ -1,16 +1,15 @@
 {
-  "name": "gophish",
-  "version": "0.4.0-dev",
+  "name": "gophishusb",
+  "version": "0.0.1-dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gophish/gophish.git"
+    "url": "git+https://github.com/niklasent/gophishusb.git"
   },
-  "author": "Jordan Wright",
+  "author": "Niklas Entschladen",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/gophish/gophish/issues"
+    "url": "https://github.com/niklasent/gophishusb/issues"
   },
-  "homepage": "https://getgophish.com",
   "devDependencies": {
     "@babel/core": "^7.4.5",
     "@babel/preset-env": "^7.4.5",
@@ -27,8 +26,9 @@
     "gulp-wrap": "^0.15.0",
     "jshint": "^2.13.4",
     "jshint-stylish": "^2.2.1",
-    "webpack": "^4.32.2",
-    "webpack-cli": "^3.3.2"
+    "webpack": "^5.99.8",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.1"
   },
   "dependencies": {
     "zxcvbn": "^4.4.2"

@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"strconv"
 
-	ctx "github.com/gophish/gophish/context"
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	ctx "github.com/niklasent/gophishusb/context"
+	log "github.com/niklasent/gophishusb/logger"
+	"github.com/niklasent/gophishusb/models"
 )
 
 // Campaigns returns a list of campaigns if requested via GET.
@@ -35,11 +35,6 @@ func (as *Server) Campaigns(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 			return
-		}
-		// If the campaign is scheduled to launch immediately, send it to the worker.
-		// Otherwise, the worker will pick it up at the scheduled time
-		if c.Status == models.CampaignInProgress {
-			go as.worker.LaunchCampaign(c)
 		}
 		JSONResponse(w, c, http.StatusCreated)
 	}
@@ -121,7 +116,6 @@ func (as *Server) CampaignSummary(w http.ResponseWriter, r *http.Request) {
 }
 
 // CampaignComplete effectively "ends" a campaign.
-// Future phishing emails clicked will return a simple "404" page.
 func (as *Server) CampaignComplete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.ParseInt(vars["id"], 0, 64)

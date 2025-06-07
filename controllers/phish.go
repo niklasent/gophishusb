@@ -3,39 +3,38 @@ package controllers
 import (
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/NYTimes/gziphandler"
-	"github.com/gophish/gophish/config"
-	ctx "github.com/gophish/gophish/context"
-	"github.com/gophish/gophish/controllers/api"
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jordan-wright/unindexed"
+	"github.com/niklasent/gophishusb/config"
+	ctx "github.com/niklasent/gophishusb/context"
+	"github.com/niklasent/gophishusb/controllers/api"
+	log "github.com/niklasent/gophishusb/logger"
+	mid "github.com/niklasent/gophishusb/middleware"
+	"github.com/niklasent/gophishusb/models"
+	"github.com/niklasent/gophishusb/util"
 )
 
 // ErrInvalidRequest is thrown when a request with an invalid structure is
 // received
-var ErrInvalidRequest = errors.New("Invalid request")
+var ErrInvalidRequest = errors.New("invalid request")
 
 // ErrCampaignComplete is thrown when an event is received for a campaign that
 // has already been marked as complete.
-var ErrCampaignComplete = errors.New("Event received on completed campaign")
+var ErrCampaignComplete = errors.New("event received on completed campaign")
 
 // TransparencyResponse is the JSON response provided when a third-party
 // makes a request to the transparency handler.
 type TransparencyResponse struct {
-	Server         string    `json:"server"`
-	ContactAddress string    `json:"contact_address"`
-	SendDate       time.Time `json:"send_date"`
+	Server         string `json:"server"`
+	ContactAddress string `json:"contact_address"`
 }
 
 // TransparencySuffix (when appended to a valid result ID), will cause Gophish
@@ -47,7 +46,7 @@ const TransparencySuffix = "+"
 type PhishingServerOption func(*PhishingServer)
 
 // PhishingServer is an HTTP server that implements the campaign event
-// handlers, such as email open tracking, click tracking, and more.
+// handlers, such as USB mounting, macro opening and more.
 type PhishingServer struct {
 	server         *http.Server
 	config         config.PhishServer
@@ -110,12 +109,13 @@ func (ps *PhishingServer) registerRoutes() {
 	router := mux.NewRouter()
 	fileServer := http.FileServer(unindexed.Dir("./static/endpoint/"))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fileServer))
-	router.HandleFunc("/track", ps.TrackHandler)
 	router.HandleFunc("/robots.txt", ps.RobotsHandler)
-	router.HandleFunc("/{path:.*}/track", ps.TrackHandler)
-	router.HandleFunc("/{path:.*}/report", ps.ReportHandler)
-	router.HandleFunc("/report", ps.ReportHandler)
-	router.HandleFunc("/{path:.*}", ps.PhishHandler)
+	phishRouter := router.PathPrefix("/phish/").Subrouter()
+	phishRouter.Use(mid.RequireTargetAPIKey)
+	phishRouter.HandleFunc("/ping/", ps.TargetPingHandler)
+	phishRouter.HandleFunc("/mount/", ps.PhishMountHandler)
+	phishRouter.HandleFunc("/macro/", ps.PhishMacroHandler)
+	phishRouter.HandleFunc("/exec/", ps.PhishExecHandler)
 
 	// Setup GZIP compression
 	gzipWrapper, _ := gziphandler.NewGzipLevelHandler(gzip.BestCompression)
@@ -130,167 +130,109 @@ func (ps *PhishingServer) registerRoutes() {
 	ps.server.Handler = phishHandler
 }
 
-// TrackHandler tracks emails as they are opened, updating the status for the given Result
-func (ps *PhishingServer) TrackHandler(w http.ResponseWriter, r *http.Request) {
-	r, err := setupContext(r)
-	if err != nil {
-		// Log the error if it wasn't something we can safely ignore
-		if err != ErrInvalidRequest && err != ErrCampaignComplete {
-			log.Error(err)
-		}
-		http.NotFound(w, r)
-		return
-	}
-	// Check for a preview
-	if _, ok := ctx.Get(r, "result").(models.EmailRequest); ok {
-		http.ServeFile(w, r, "static/images/pixel.png")
-		return
-	}
-	rs := ctx.Get(r, "result").(models.Result)
-	rid := ctx.Get(r, "rid").(string)
-	d := ctx.Get(r, "details").(models.EventDetails)
-
-	// Check for a transparency request
-	if strings.HasSuffix(rid, TransparencySuffix) {
-		ps.TransparencyHandler(w, r)
-		return
-	}
-
-	err = rs.HandleEmailOpened(d)
+// TargetPingHandler handles incoming pings from target
+func (ps *PhishingServer) TargetPingHandler(w http.ResponseWriter, r *http.Request) {
+	t := ctx.Get(r, "target").(models.Target)
+	err := models.PingTarget(&t)
 	if err != nil {
 		log.Error(err)
+		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
+		return
 	}
-	http.ServeFile(w, r, "static/images/pixel.png")
+	api.JSONResponse(w, models.Response{Success: true, Message: "Event OK"}, http.StatusOK)
 }
 
-// ReportHandler tracks emails as they are reported, updating the status for the given Result
-func (ps *PhishingServer) ReportHandler(w http.ResponseWriter, r *http.Request) {
-	r, err := setupContext(r)
-	w.Header().Set("Access-Control-Allow-Origin", "*") // To allow Chrome extensions (or other pages) to report a campaign without violating CORS
+// PhishHandler handles incoming client connections and registers the USB mount action
+func (ps *PhishingServer) PhishMountHandler(w http.ResponseWriter, r *http.Request) {
+	// Get event details from agent
+	d := models.EventDetails{}
+	err := json.NewDecoder(r.Body).Decode(&d)
 	if err != nil {
-		// Log the error if it wasn't something we can safely ignore
-		if err != ErrInvalidRequest && err != ErrCampaignComplete {
-			log.Error(err)
-		}
+		log.Errorf("error decoding event details: %v", err)
+		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
+		return
+	}
+	tid := ctx.Get(r, "target_id").(int64)
+	usbcheck, err := models.CheckUsb(d.USB, tid)
+	if (err != nil) || (!usbcheck) {
+		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusForbidden)
+		return
+	}
+	rs, err := models.GetActiveResultsByTargetId(tid)
+	if err != nil {
+		log.Error(err)
 		http.NotFound(w, r)
 		return
 	}
-	// Check for a preview
-	if _, ok := ctx.Get(r, "result").(models.EmailRequest); ok {
-		w.WriteHeader(http.StatusNoContent)
-		return
+	for _, r := range rs {
+		err = r.HandleMounted(d)
+		if err != nil {
+			log.Error(err)
+		}
 	}
-	rs := ctx.Get(r, "result").(models.Result)
-	rid := ctx.Get(r, "rid").(string)
-	d := ctx.Get(r, "details").(models.EventDetails)
-
-	// Check for a transparency request
-	if strings.HasSuffix(rid, TransparencySuffix) {
-		ps.TransparencyHandler(w, r)
-		return
-	}
-
-	err = rs.HandleEmailReport(d)
-	if err != nil {
-		log.Error(err)
-	}
-	w.WriteHeader(http.StatusNoContent)
+	api.JSONResponse(w, models.Response{Success: true, Message: "Event OK"}, http.StatusOK)
 }
 
-// PhishHandler handles incoming client connections and registers the associated actions performed
-// (such as clicked link, etc.)
-func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
-	r, err := setupContext(r)
+// PhishMacroHandler handles incoming client connections and registers the macro opening action
+func (ps *PhishingServer) PhishMacroHandler(w http.ResponseWriter, r *http.Request) {
+	// Get event details from agent
+	d := models.EventDetails{}
+	err := json.NewDecoder(r.Body).Decode(&d)
 	if err != nil {
-		// Log the error if it wasn't something we can safely ignore
-		if err != ErrInvalidRequest && err != ErrCampaignComplete {
-			log.Error(err)
-		}
-		http.NotFound(w, r)
+		log.Errorf("error decoding event details: %v", err)
+		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("X-Server", config.ServerName) // Useful for checking if this is a GoPhish server (e.g. for campaign reporting plugins)
-	var ptx models.PhishingTemplateContext
-	// Check for a preview
-	if preview, ok := ctx.Get(r, "result").(models.EmailRequest); ok {
-		ptx, err = models.NewPhishingTemplateContext(&preview, preview.BaseRecipient, preview.RId)
-		if err != nil {
-			log.Error(err)
-			http.NotFound(w, r)
-			return
-		}
-		p, err := models.GetPage(preview.PageId, preview.UserId)
-		if err != nil {
-			log.Error(err)
-			http.NotFound(w, r)
-			return
-		}
-		renderPhishResponse(w, r, ptx, p)
+	tid := ctx.Get(r, "target_id").(int64)
+	usbcheck, err := models.CheckUsb(d.USB, tid)
+	if (err != nil) || (!usbcheck) {
+		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusForbidden)
 		return
 	}
-	rs := ctx.Get(r, "result").(models.Result)
-	rid := ctx.Get(r, "rid").(string)
-	c := ctx.Get(r, "campaign").(models.Campaign)
-	d := ctx.Get(r, "details").(models.EventDetails)
-
-	// Check for a transparency request
-	if strings.HasSuffix(rid, TransparencySuffix) {
-		ps.TransparencyHandler(w, r)
-		return
-	}
-
-	p, err := models.GetPage(c.PageId, c.UserId)
+	rs, err := models.GetActiveResultsByTargetId(tid)
 	if err != nil {
 		log.Error(err)
 		http.NotFound(w, r)
 		return
 	}
-	switch {
-	case r.Method == "GET":
-		err = rs.HandleClickedLink(d)
-		if err != nil {
-			log.Error(err)
-		}
-	case r.Method == "POST":
-		err = rs.HandleFormSubmit(d)
+	for _, r := range rs {
+		err = r.HandleOpenedMacro(d)
 		if err != nil {
 			log.Error(err)
 		}
 	}
-	ptx, err = models.NewPhishingTemplateContext(&c, rs.BaseRecipient, rs.RId)
-	if err != nil {
-		log.Error(err)
-		http.NotFound(w, r)
-	}
-	renderPhishResponse(w, r, ptx, p)
+	api.JSONResponse(w, models.Response{Success: true, Message: "Event OK"}, http.StatusOK)
 }
 
-// renderPhishResponse handles rendering the correct response to the phishing
-// connection. This usually involves writing out the page HTML or redirecting
-// the user to the correct URL.
-func renderPhishResponse(w http.ResponseWriter, r *http.Request, ptx models.PhishingTemplateContext, p models.Page) {
-	// If the request was a form submit and a redirect URL was specified, we
-	// should send the user to that URL
-	if r.Method == "POST" {
-		if p.RedirectURL != "" {
-			redirectURL, err := models.ExecuteTemplate(p.RedirectURL, ptx)
-			if err != nil {
-				log.Error(err)
-				http.NotFound(w, r)
-				return
-			}
-			http.Redirect(w, r, redirectURL, http.StatusFound)
-			return
-		}
+// PhishExecHandler handles incoming client connections and registers the executable opening action
+func (ps *PhishingServer) PhishExecHandler(w http.ResponseWriter, r *http.Request) {
+	// Get event details from agent
+	d := models.EventDetails{}
+	err := json.NewDecoder(r.Body).Decode(&d)
+	if err != nil {
+		log.Errorf("error decoding event details: %v", err)
+		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
+		return
 	}
-	// Otherwise, we just need to write out the templated HTML
-	html, err := models.ExecuteTemplate(p.HTML, ptx)
+	tid := ctx.Get(r, "target_id").(int64)
+	usbcheck, err := models.CheckUsb(d.USB, tid)
+	if (err != nil) || (!usbcheck) {
+		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusForbidden)
+		return
+	}
+	rs, err := models.GetActiveResultsByTargetId(tid)
 	if err != nil {
 		log.Error(err)
 		http.NotFound(w, r)
 		return
 	}
-	w.Write([]byte(html))
+	for _, r := range rs {
+		err = r.HandleOpenedExec(d)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+	api.JSONResponse(w, models.Response{Success: true, Message: "Event OK"}, http.StatusOK)
 }
 
 // RobotsHandler prevents search engines, etc. from indexing phishing materials
@@ -301,82 +243,9 @@ func (ps *PhishingServer) RobotsHandler(w http.ResponseWriter, r *http.Request) 
 // TransparencyHandler returns a TransparencyResponse for the provided result
 // and campaign.
 func (ps *PhishingServer) TransparencyHandler(w http.ResponseWriter, r *http.Request) {
-	rs := ctx.Get(r, "result").(models.Result)
 	tr := &TransparencyResponse{
 		Server:         config.ServerName,
-		SendDate:       rs.SendDate,
 		ContactAddress: ps.contactAddress,
 	}
 	api.JSONResponse(w, tr, http.StatusOK)
-}
-
-// setupContext handles some of the administrative work around receiving a new
-// request, such as checking the result ID, the campaign, etc.
-func setupContext(r *http.Request) (*http.Request, error) {
-	err := r.ParseForm()
-	if err != nil {
-		log.Error(err)
-		return r, err
-	}
-	rid := r.Form.Get(models.RecipientParameter)
-	if rid == "" {
-		return r, ErrInvalidRequest
-	}
-	// Since we want to support the common case of adding a "+" to indicate a
-	// transparency request, we need to take care to handle the case where the
-	// request ends with a space, since a "+" is technically reserved for use
-	// as a URL encoding of a space.
-	if strings.HasSuffix(rid, " ") {
-		// We'll trim off the space
-		rid = strings.TrimRight(rid, " ")
-		// Then we'll add the transparency suffix
-		rid = fmt.Sprintf("%s%s", rid, TransparencySuffix)
-	}
-	// Finally, if this is a transparency request, we'll need to verify that
-	// a valid rid has been provided, so we'll look up the result with a
-	// trimmed parameter.
-	id := strings.TrimSuffix(rid, TransparencySuffix)
-	// Check to see if this is a preview or a real result
-	if strings.HasPrefix(id, models.PreviewPrefix) {
-		rs, err := models.GetEmailRequestByResultId(id)
-		if err != nil {
-			return r, err
-		}
-		r = ctx.Set(r, "result", rs)
-		return r, nil
-	}
-	rs, err := models.GetResult(id)
-	if err != nil {
-		return r, err
-	}
-	c, err := models.GetCampaign(rs.CampaignId, rs.UserId)
-	if err != nil {
-		log.Error(err)
-		return r, err
-	}
-	// Don't process events for completed campaigns
-	if c.Status == models.CampaignComplete {
-		return r, ErrCampaignComplete
-	}
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		ip = r.RemoteAddr
-	}
-	// Handle post processing such as GeoIP
-	err = rs.UpdateGeo(ip)
-	if err != nil {
-		log.Error(err)
-	}
-	d := models.EventDetails{
-		Payload: r.Form,
-		Browser: make(map[string]string),
-	}
-	d.Browser["address"] = ip
-	d.Browser["user-agent"] = r.Header.Get("User-Agent")
-
-	r = ctx.Set(r, "rid", rid)
-	r = ctx.Set(r, "result", rs)
-	r = ctx.Set(r, "campaign", c)
-	r = ctx.Set(r, "details", d)
-	return r, nil
 }

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/gophish/gophish/logger"
+	log "github.com/niklasent/gophishusb/logger"
 	"golang.org/x/time/rate"
 )
 

@@ -1,7 +1,7 @@
 {
 	"admin_server": {
-		"listen_url": "127.0.0.1:3333",
-		"use_tls": true,
+		"listen_url": "192.168.178.28:3333",
+		"use_tls": false,
 		"cert_path": "gophish_admin.crt",
 		"key_path": "gophish_admin.key",
 		"trusted_origins": []
@@ -13,7 +13,7 @@
 		"key_path": "example.key"
 	},
 	"db_name": "sqlite3",
-	"db_path": "gophish.db",
+	"db_path": "gophishusb.db",
 	"migrations_prefix": "db/db_",
 	"contact_address": "",
 	"logging": {

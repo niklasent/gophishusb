@@ -1,3 +1,6 @@
+# VSCode directory
+.vscode
+
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o
 *.a
@@ -27,5 +30,5 @@ gophish_admin.crt
 gophish_admin.key
 
 *.exe
-gophish.db*
-gophish
+gophishusb.db*
+gophishusb

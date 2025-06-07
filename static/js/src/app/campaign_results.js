@@ -3,93 +3,47 @@ var doPoll = true;
 
 // statuses is a helper map to point result statuses to ui classes
 var statuses = {
-    "Email Sent": {
+    "Active": {
         color: "#1abc9c",
         label: "label-success",
-        icon: "fa-envelope",
-        point: "ct-point-sent"
-    },
-    "Emails Sent": {
-        color: "#1abc9c",
-        label: "label-success",
-        icon: "fa-envelope",
-        point: "ct-point-sent"
+        icon: "fa-laptop",
+        point: "ct-point-active"
     },
     "In progress": {
         label: "label-primary"
     },
-    "Queued": {
-        label: "label-info"
-    },
     "Completed": {
         label: "label-success"
     },
-    "Email Opened": {
+    "USB Mounted": {
         color: "#f9bf3b",
         label: "label-warning",
-        icon: "fa-envelope-open",
-        point: "ct-point-opened"
+        icon: "fa-usb",
+        point: "ct-point-mount"
     },
-    "Clicked Link": {
+    "Opened Macro": {
         color: "#F39C12",
-        label: "label-clicked",
-        icon: "fa-mouse-pointer",
-        point: "ct-point-clicked"
+        label: "label-macro",
+        icon: "fa-file",
+        point: "ct-point-macro"
     },
-    "Success": {
+    "Opened Executable": {
         color: "#f05b4f",
         label: "label-danger",
-        icon: "fa-exclamation",
-        point: "ct-point-clicked"
+        icon: "fa-gear",
+        point: "ct-point-exec"
     },
-    //not a status, but is used for the campaign timeline and user timeline
-    "Email Reported": {
-        color: "#45d6ef",
-        label: "label-info",
-        icon: "fa-bullhorn",
-        point: "ct-point-reported"
-    },
-    "Error": {
-        color: "#6c7a89",
-        label: "label-default",
-        icon: "fa-times",
-        point: "ct-point-error"
-    },
-    "Error Sending Email": {
-        color: "#6c7a89",
-        label: "label-default",
-        icon: "fa-times",
-        point: "ct-point-error"
-    },
-    "Submitted Data": {
+    "Opened Everything": {
         color: "#f05b4f",
         label: "label-danger",
-        icon: "fa-exclamation",
-        point: "ct-point-clicked"
+        icon: "fa-gear",
+        point: "ct-point-exec"
     },
     "Unknown": {
         color: "#6c7a89",
         label: "label-default",
         icon: "fa-question",
         point: "ct-point-error"
-    },
-    "Sending": {
-        color: "#428bca",
-        label: "label-primary",
-        icon: "fa-spinner",
-        point: "ct-point-sending"
-    },
-    "Retrying": {
-        color: "#6c7a89",
-        label: "label-default",
-        icon: "fa-clock-o",
-        point: "ct-point-error"
-    },
-    "Scheduled": {
-        color: "#428bca",
-        label: "label-primary",
-        icon: "fa-clock-o",
-        point: "ct-point-sending"
     },
     "Campaign Created": {
         label: "label-success",
@@ -98,20 +52,21 @@ var statuses = {
 }
 
 var statusMapping = {
-    "Email Sent": "sent",
-    "Email Opened": "opened",
-    "Clicked Link": "clicked",
-    "Submitted Data": "submitted_data",
-    "Email Reported": "reported",
+    "Active": "active",
+    "USB Mounted": "mount",
+    "Opened Macro": "macro",
+    "Opened Executable": "exec",
+    "Opened Everything": "every"
 }
 
 // This is an underwhelming attempt at an enum
 // until I have time to refactor this appropriately.
 var progressListing = [
-    "Email Sent",
-    "Email Opened",
-    "Clicked Link",
-    "Submitted Data"
+    "Active",
+    "USB Mounted",
+    "Opened Macro",
+    "Opened Executable",
+    "Opened Everything"
 ]
 
 var campaign = {}
@@ -236,152 +191,20 @@ function exportAsCSV(scope) {
     $("#exportButton").html(exportHTML)
 }
 
-function replay(event_idx) {
-    request = campaign.timeline[event_idx]
-    details = JSON.parse(request.details)
-    url = null
-    form = $('<form>').attr({
-        method: 'POST',
-        target: '_blank',
-    })
-    /* Create a form object and submit it */
-    $.each(Object.keys(details.payload), function (i, param) {
-        if (param == "rid") {
-            return true;
-        }
-        if (param == "__original_url") {
-            url = details.payload[param];
-            return true;
-        }
-        $('<input>').attr({
-            name: param,
-        }).val(details.payload[param]).appendTo(form);
-    })
-    /* Ensure we know where to send the user */
-    // Prompt for the URL
-    Swal.fire({
-        title: 'Where do you want the credentials submitted to?',
-        input: 'text',
-        showCancelButton: true,
-        inputPlaceholder: "http://example.com/login",
-        inputValue: url || "",
-        inputValidator: function (value) {
-            return new Promise(function (resolve, reject) {
-                if (value) {
-                    resolve();
-                } else {
-                    reject('Invalid URL.');
-                }
-            });
-        }
-    }).then(function (result) {
-        if (result.value){
-            url = result.value
-            submitForm()
-        }
-    })
-    return
-    submitForm()
-
-    function submitForm() {
-        form.attr({
-            action: url
-        })
-        form.appendTo('body').submit().remove()
-    }
-}
-
-/**
- * Returns an HTML string that displays the OS and browser that clicked the link
- * or submitted credentials.
- * 
- * @param {object} event_details - The "details" parameter for a campaign
- *  timeline event
- * 
- */
-var renderDevice = function (event_details) {
-    var ua = UAParser(details.browser['user-agent'])
-    var detailsString = '<div class="timeline-device-details">'
-
-    var deviceIcon = 'laptop'
-    if (ua.device.type) {
-        if (ua.device.type == 'tablet' || ua.device.type == 'mobile') {
-            deviceIcon = ua.device.type
-        }
-    }
-
-    var deviceVendor = ''
-    if (ua.device.vendor) {
-        deviceVendor = ua.device.vendor.toLowerCase()
-        if (deviceVendor == 'microsoft') deviceVendor = 'windows'
-    }
-
-    var deviceName = 'Unknown'
-    if (ua.os.name) {
-        deviceName = ua.os.name
-        if (deviceName == "Mac OS") {
-            deviceVendor = 'apple'
-        } else if (deviceName == "Windows") {
-            deviceVendor = 'windows'
-        }
-        if (ua.device.vendor && ua.device.model) {
-            deviceName = ua.device.vendor + ' ' + ua.device.model
-        }
-    }
-
-    if (ua.os.version) {
-        deviceName = deviceName + ' (OS Version: ' + ua.os.version + ')'
-    }
-
-    deviceString = '<div class="timeline-device-os"><span class="fa fa-stack">' +
-        '<i class="fa fa-' + escapeHtml(deviceIcon) + ' fa-stack-2x"></i>' +
-        '<i class="fa fa-vendor-icon fa-' + escapeHtml(deviceVendor) + ' fa-stack-1x"></i>' +
-        '</span> ' + escapeHtml(deviceName) + '</div>'
-
-    detailsString += deviceString
-
-    var deviceBrowser = 'Unknown'
-    var browserIcon = 'info-circle'
-    var browserVersion = ''
-
-    if (ua.browser && ua.browser.name) {
-        deviceBrowser = ua.browser.name
-        // Handle the "mobile safari" case
-        deviceBrowser = deviceBrowser.replace('Mobile ', '')
-        if (deviceBrowser) {
-            browserIcon = deviceBrowser.toLowerCase()
-            if (browserIcon == 'ie') browserIcon = 'internet-explorer'
-        }
-        browserVersion = '(Version: ' + ua.browser.version + ')'
-    }
-
-    var browserString = '<div class="timeline-device-browser"><span class="fa fa-stack">' +
-        '<i class="fa fa-' + escapeHtml(browserIcon) + ' fa-stack-1x"></i></span> ' +
-        deviceBrowser + ' ' + browserVersion + '</div>'
-
-    detailsString += browserString
-    detailsString += '</div>'
-    return detailsString
-}
-
 function renderTimeline(data) {
     record = {
         "id": data[0],
-        "first_name": data[2],
-        "last_name": data[3],
-        "email": data[4],
-        "position": data[5],
-        "status": data[6],
-        "reported": data[7],
-        "send_date": data[8]
+        "hostname": data[2],
+        "os": data[3],
+        "username": data[4],
+        "status": data[5],
     }
     results = '<div class="timeline col-sm-12 well well-lg">' +
-        '<h6>Timeline for ' + escapeHtml(record.first_name) + ' ' + escapeHtml(record.last_name) +
-        '</h6><span class="subtitle">Email: ' + escapeHtml(record.email) +
-        '<br>Result ID: ' + escapeHtml(record.id) + '</span>' +
+        '<h6>Timeline for ' + escapeHtml(record.hostname) +
+        '</h6><span class="subtitle">Result ID: ' + escapeHtml(record.id) + '</span>' +
         '<div class="timeline-graph col-sm-6">'
     $.each(campaign.timeline, function (i, event) {
-        if (!event.email || event.email == record.email) {
+        if (!event.hostname || event.hostname == record.hostname) {
             // Add the event
             results += '<div class="timeline-entry">' +
                 '    <div class="timeline-bar"></div>'
@@ -389,55 +212,11 @@ function renderTimeline(data) {
                 '    <div class="timeline-icon ' + statuses[event.message].label + '">' +
                 '    <i class="fa ' + statuses[event.message].icon + '"></i></div>' +
                 '    <div class="timeline-message">' + escapeHtml(event.message) +
-                '    <span class="timeline-date">' + moment.utc(event.time).local().format('MMMM Do YYYY h:mm:ss a') + '</span>'
-            if (event.details) {
-                details = JSON.parse(event.details)
-                if (event.message == "Clicked Link" || event.message == "Submitted Data") {
-                    deviceView = renderDevice(details)
-                    if (deviceView) {
-                        results += deviceView
-                    }
-                }
-                if (event.message == "Submitted Data") {
-                    results += '<div class="timeline-replay-button"><button onclick="replay(' + i + ')" class="btn btn-success">'
-                    results += '<i class="fa fa-refresh"></i> Replay Credentials</button></div>'
-                    results += '<div class="timeline-event-details"><i class="fa fa-caret-right"></i> View Details</div>'
-                }
-                if (details.payload) {
-                    results += '<div class="timeline-event-results">'
-                    results += '    <table class="table table-condensed table-bordered table-striped">'
-                    results += '        <thead><tr><th>Parameter</th><th>Value(s)</tr></thead><tbody>'
-                    $.each(Object.keys(details.payload), function (i, param) {
-                        if (param == "rid") {
-                            return true;
-                        }
-                        results += '    <tr>'
-                        results += '        <td>' + escapeHtml(param) + '</td>'
-                        results += '        <td>' + escapeHtml(details.payload[param]) + '</td>'
-                        results += '    </tr>'
-                    })
-                    results += '       </tbody></table>'
-                    results += '</div>'
-                }
-                if (details.error) {
-                    results += '<div class="timeline-event-details"><i class="fa fa-caret-right"></i> View Details</div>'
-                    results += '<div class="timeline-event-results">'
-                    results += '<span class="label label-default">Error</span> ' + details.error
-                    results += '</div>'
-                }
-            }
+                '    <span class="timeline-date">' + moment.utc(event.time).local().format('MMMM Do YYYY h:mm:ss a') + '</span>' +
+                '    <span class="timeline-username">' + escapeHtml(event.details.username) + '</span>'
             results += '</div></div>'
         }
     })
-    // Add the scheduled send event at the bottom
-    if (record.status == "Scheduled" || record.status == "Retrying") {
-        results += '<div class="timeline-entry">' +
-            '    <div class="timeline-bar"></div>'
-        results +=
-            '    <div class="timeline-icon ' + statuses[record.status].label + '">' +
-            '    <i class="fa ' + statuses[record.status].icon + '"></i></div>' +
-            '    <div class="timeline-message">' + "Scheduled to send at " + record.send_date + '</span>'
-    }
     results += '</div></div>'
     return results
 }
@@ -478,7 +257,7 @@ var renderTimelineChart = function (chartopts) {
         tooltip: {
             formatter: function () {
                 return Highcharts.dateFormat('%A, %b %d %l:%M:%S %P', new Date(this.x)) +
-                    '<br>Event: ' + this.point.message + '<br>Email: <b>' + this.point.email + '</b>'
+                    '<br>Event: ' + this.point.message + '<br>Hostname: <b>' + this.point.hostname + '</b>'
             }
         },
         legend: {
@@ -608,17 +387,11 @@ var updateMap = function (results) {
 
 /**
  * Creates a status label for use in the results datatable
- * @param {string} status 
- * @param {moment(datetime)} send_date 
+ * @param {string} status
  */
-function createStatusLabel(status, send_date) {
+function createStatusLabel(status) {
     var label = statuses[status].label || "label-default";
     var statusColumn = "<span class=\"label " + label + "\">" + status + "</span>"
-    // Add the tooltip if the email is scheduled to be sent
-    if (status == "Scheduled" || status == "Retrying") {
-        var sendDateMessage = "Scheduled to send at " + send_date
-        statusColumn = "<span class=\"label " + label + "\" data-toggle=\"tooltip\" data-placement=\"top\" data-html=\"true\" title=\"" + sendDateMessage + "\">" + status + "</span>"
-    }
     return statusColumn
 }
 
@@ -626,7 +399,7 @@ function createStatusLabel(status, send_date) {
  *
  * Updates:
  * * Timeline Chart
- * * Email (Donut) Chart
+ * * Hostname (Donut) Chart
  * * Map Bubbles
  * * Datatables
  */
@@ -639,7 +412,7 @@ function poll() {
             $.each(campaign.timeline, function (i, event) {
                 var event_date = moment.utc(event.time).local()
                 timeline_series_data.push({
-                    email: event.email,
+                    hostname: event.hostname,
                     message: event.message,
                     x: event_date.valueOf(),
                     y: 1,
@@ -653,39 +426,36 @@ function poll() {
                 data: timeline_series_data
             })
             /* Update the results donut chart */
-            var email_series_data = {}
+            var target_series_data = {}
             // Load the initial data
             Object.keys(statusMapping).forEach(function (k) {
-                email_series_data[k] = 0
+                target_series_data[k] = 0
             });
             $.each(campaign.results, function (i, result) {
-                email_series_data[result.status]++;
-                if (result.reported) {
-                    email_series_data['Email Reported']++
-                }
+                target_series_data[result.status]++;
                 // Backfill status values
                 var step = progressListing.indexOf(result.status)
                 for (var i = 0; i < step; i++) {
-                    email_series_data[progressListing[i]]++
+                    target_series_data[progressListing[i]]++
                 }
             })
-            $.each(email_series_data, function (status, count) {
-                var email_data = []
-                if (!(status in statusMapping)) {
+            $.each(target_series_data, function (status, count) {
+                var target_data = []
+                if (!(status in statusMapping) || (status == "Opened Everything")) {
                     return true
                 }
-                email_data.push({
+                target_data.push({
                     name: status,
                     y: Math.floor((count / campaign.results.length) * 100),
                     count: count
                 })
-                email_data.push({
+                target_data.push({
                     name: '',
                     y: 100 - Math.floor((count / campaign.results.length) * 100)
                 })
                 var chart = $("#" + statusMapping[status] + "_chart").highcharts()
                 chart.series[0].update({
-                    data: email_data
+                    data: target_data
                 })
             })
 
@@ -697,8 +467,6 @@ function poll() {
                 var rid = rowData[0]
                 $.each(campaign.results, function (j, result) {
                     if (result.id == rid) {
-                        rowData[8] = moment(result.send_date).format('MMMM Do YYYY, h:mm:ss a')
-                        rowData[7] = result.reported
                         rowData[6] = result.status
                         resultsTable.row(i).data(rowData)
                         if (row.child.isShown()) {
@@ -721,12 +489,12 @@ function poll() {
 
 function load() {
     campaign.id = window.location.pathname.split('/').slice(-1)[0]
-    var use_map = JSON.parse(localStorage.getItem('gophish.use_map'))
+    var use_map = JSON.parse(localStorage.getItem('gophishusb.use_map'))
     api.campaignId.results(campaign.id)
         .success(function (c) {
             campaign = c
             if (campaign) {
-                $("title").text(c.name + " - Gophish")
+                $("title").text(c.name + " - GophishUSB")
                 $("#loading").hide()
                 $("#campaignResults").show()
                 // Set the title
@@ -754,7 +522,15 @@ function load() {
                 resultsTable = $("#resultsTable").DataTable({
                     destroy: true,
                     "order": [
-                        [2, "asc"]
+                        [0, "asc"]
+                    ],
+                    columns: [
+                        { title: "Target ID" },
+                        { title: "", className: "details-control" },
+                        { title: "Hostname" },
+                        { title: "OS" },
+                        { title: "Last User" },
+                        { title: "Status" }
                     ],
                     columnDefs: [{
                             orderable: false,
@@ -763,56 +539,37 @@ function load() {
                             className: "details-control",
                             "targets": [1]
                         }, {
-                            "visible": false,
-                            "targets": [0, 8]
+                            "visible": true,
+                            "targets": [0, 5]
                         },
                         {
-                            "render": function (data, type, row) {
-                                return createStatusLabel(data, row[8])
+                            "render": function (data) {
+                                return createStatusLabel(data)
                             },
-                            "targets": [6]
-                        },
-                        {
-                            className: "text-center",
-                            "render": function (reported, type, row) {
-                                if (type == "display") {
-                                    if (reported) {
-                                        return "<i class='fa fa-check-circle text-center text-success'></i>"
-                                    }
-                                    return "<i role='button' class='fa fa-times-circle text-center text-muted' onclick='report_mail(\"" + row[0] + "\", \"" + campaign.id + "\");'></i>"
-                                }
-                                return reported
-                            },
-                            "targets": [7]
+                            "targets": [5]
                         }
                     ]
                 });
                 resultsTable.clear();
-                var email_series_data = {}
+                var target_series_data = {}
                 var timeline_series_data = []
                 Object.keys(statusMapping).forEach(function (k) {
-                    email_series_data[k] = 0
+                    target_series_data[k] = 0
                 });
                 $.each(campaign.results, function (i, result) {
                     resultsTable.row.add([
-                        result.id,
+                        result.target_id,
                         "<i id=\"caret\" class=\"fa fa-caret-right\"></i>",
-                        escapeHtml(result.first_name) || "",
-                        escapeHtml(result.last_name) || "",
-                        escapeHtml(result.email) || "",
-                        escapeHtml(result.position) || "",
-                        result.status,
-                        result.reported,
-                        moment(result.send_date).format('MMMM Do YYYY, h:mm:ss a')
+                        escapeHtml(result.hostname) || "",
+                        escapeHtml(result.os) || "",
+                        escapeHtml(result.username) || "",
+                        result.status
                     ])
-                    email_series_data[result.status]++;
-                    if (result.reported) {
-                        email_series_data['Email Reported']++
-                    }
+                    target_series_data[result.status]++;
                     // Backfill status values
                     var step = progressListing.indexOf(result.status)
                     for (var i = 0; i < step; i++) {
-                        email_series_data[progressListing[i]]++
+                        target_series_data[progressListing[i]]++
                     }
                 })
                 resultsTable.draw();
@@ -843,7 +600,8 @@ function load() {
                     }
                     var event_date = moment.utc(event.time).local()
                     timeline_series_data.push({
-                        email: event.email,
+                        hostname: event.hostname,
+                        username: event.username,
                         message: event.message,
                         x: event_date.valueOf(),
                         y: 1,
@@ -855,17 +613,17 @@ function load() {
                 renderTimelineChart({
                     data: timeline_series_data
                 })
-                $.each(email_series_data, function (status, count) {
-                    var email_data = []
-                    if (!(status in statusMapping)) {
+                $.each(target_series_data, function (status, count) {
+                    var target_data = []
+                    if (!(status in statusMapping) || (status == "Opened Everything")) {
                         return true
                     }
-                    email_data.push({
+                    target_data.push({
                         name: status,
                         y: Math.floor((count / campaign.results.length) * 100),
                         count: count
                     })
-                    email_data.push({
+                    target_data.push({
                         name: '',
                         y: 100 - Math.floor((count / campaign.results.length) * 100)
                     })
@@ -873,7 +631,7 @@ function load() {
                         elemId: statusMapping[status] + '_chart',
                         title: status,
                         name: status,
-                        data: email_data,
+                        data: target_data,
                         colors: [statuses[status].color, '#dddddd']
                     })
                 })
@@ -901,7 +659,7 @@ function load() {
         })
         .error(function () {
             $("#loading").hide()
-            errorFlash(" Campaign not found!")
+            errorFlash("Campaign not found!")
         })
 }
 
@@ -917,48 +675,6 @@ function refresh() {
     clearTimeout(setRefresh)
     setRefresh = setTimeout(refresh, 60000)
 };
-
-function report_mail(rid, cid) {
-    Swal.fire({
-        title: "Are you sure?",
-        text: "This result will be flagged as reported (RID: " + rid + ")",
-        type: "question",
-        animation: false,
-        showCancelButton: true,
-        confirmButtonText: "Continue",
-        confirmButtonColor: "#428bca",
-        reverseButtons: true,
-        allowOutsideClick: false,
-        showLoaderOnConfirm: true
-    }).then(function (result) {
-        if (result.value){
-            api.campaignId.get(cid).success((function(c) {
-                report_url = new URL(c.url)
-                report_url.pathname = '/report'
-                report_url.search = "?rid=" + rid 
-                fetch(report_url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                    refresh();
-                })
-                .catch(error => {
-                    let errorMessage = error.message;
-                    if (error.message === "Failed to fetch") {
-                        errorMessage = "This might be due to Mixed Content issues or network problems.";
-                    }
-                    Swal.fire({
-                        title: 'Error',
-                        text: errorMessage,
-                        type: 'error',
-                        confirmButtonText: 'Close'
-                    });
-                });
-            }));
-        }
-    })
-}
 
 $(document).ready(function () {
     Highcharts.setOptions({
