@@ -553,6 +553,7 @@ td.details-control {
     float: right;
     color: #999999;
     font-style: italic;
+    padding-right: 25%;
 }
 
 .timeline-event-details {

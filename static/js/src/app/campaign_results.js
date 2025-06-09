@@ -212,8 +212,10 @@ function renderTimeline(data) {
                 '    <div class="timeline-icon ' + statuses[event.message].label + '">' +
                 '    <i class="fa ' + statuses[event.message].icon + '"></i></div>' +
                 '    <div class="timeline-message">' + escapeHtml(event.message) +
-                '    <span class="timeline-date">' + moment.utc(event.time).local().format('MMMM Do YYYY h:mm:ss a') + '</span>' +
-                '    <span class="timeline-username">' + escapeHtml(event.details.username) + '</span>'
+                '    <span class="timeline-date">' + moment.utc(event.time).local().format('MMMM Do YYYY h:mm:ss a') + '</span>' 
+            if (event.details) {
+                results += '    <span class="timeline-username">' + 'by ' + escapeHtml(JSON.parse(event.details).username) + '</span>'
+            }
             results += '</div></div>'
         }
     })
