@@ -153,6 +153,7 @@ func (ps *PhishingServer) PhishMountHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	tid := ctx.Get(r, "target_id").(int64)
+	t := ctx.Get(r, "target").(models.Target)
 	usbcheck, err := models.CheckUsb(d.USB, tid)
 	if (err != nil) || (!usbcheck) {
 		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusForbidden)
@@ -165,7 +166,7 @@ func (ps *PhishingServer) PhishMountHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	for _, r := range rs {
-		err = r.HandleMounted(d)
+		err = r.HandleMounted(t.Hostname, d)
 		if err != nil {
 			log.Error(err)
 		}
@@ -184,6 +185,7 @@ func (ps *PhishingServer) PhishMacroHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	tid := ctx.Get(r, "target_id").(int64)
+	t := ctx.Get(r, "target").(models.Target)
 	usbcheck, err := models.CheckUsb(d.USB, tid)
 	if (err != nil) || (!usbcheck) {
 		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusForbidden)
@@ -196,7 +198,7 @@ func (ps *PhishingServer) PhishMacroHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	for _, r := range rs {
-		err = r.HandleOpenedMacro(d)
+		err = r.HandleOpenedMacro(t.Hostname, d)
 		if err != nil {
 			log.Error(err)
 		}
@@ -215,6 +217,7 @@ func (ps *PhishingServer) PhishExecHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	tid := ctx.Get(r, "target_id").(int64)
+	t := ctx.Get(r, "target").(models.Target)
 	usbcheck, err := models.CheckUsb(d.USB, tid)
 	if (err != nil) || (!usbcheck) {
 		api.JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusForbidden)
@@ -227,7 +230,7 @@ func (ps *PhishingServer) PhishExecHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	for _, r := range rs {
-		err = r.HandleOpenedExec(d)
+		err = r.HandleOpenedExec(t.Hostname, d)
 		if err != nil {
 			log.Error(err)
 		}
