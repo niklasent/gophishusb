@@ -33,8 +33,8 @@ type Result struct {
 	BaseRecipient
 }
 
-func (r *Result) createEvent(status string, details interface{}) (*Event, error) {
-	e := &Event{Message: status}
+func (r *Result) createEvent(hostname string, status string, details interface{}) (*Event, error) {
+	e := &Event{Hostname: hostname, Message: status}
 	if details != nil {
 		dj, err := json.Marshal(details)
 		if err != nil {
@@ -47,12 +47,12 @@ func (r *Result) createEvent(status string, details interface{}) (*Event, error)
 }
 
 // HandleMounted updates a Result in the case where the recipient mounted a USB.
-func (r *Result) HandleMounted(details EventDetails) error {
+func (r *Result) HandleMounted(hostname string, details EventDetails) error {
 	// Don't create an event of the user already mounted a USB
-	if r.Status == EventMounted {
+	if r.Status == EventMounted || r.Status == EventOpenedMacro || r.Status == EventOpenedExec || r.Status == EventOpenedAll {
 		return nil
 	}
-	event, err := r.createEvent(EventMounted, details)
+	event, err := r.createEvent(hostname, EventMounted, details)
 	if err != nil {
 		return err
 	}
@@ -66,8 +66,8 @@ func (r *Result) HandleMounted(details EventDetails) error {
 }
 
 // HandleOpenedMacro updates a Result in the case where the recipient opened the macro.
-func (r *Result) HandleOpenedMacro(details EventDetails) error {
-	event, err := r.createEvent(EventOpenedMacro, details)
+func (r *Result) HandleOpenedMacro(hostname string, details EventDetails) error {
+	event, err := r.createEvent(hostname, EventOpenedMacro, details)
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,8 @@ func (r *Result) HandleOpenedMacro(details EventDetails) error {
 }
 
 // HandleOpenedExec updates a Result in the case where the recipient opened the executable.
-func (r *Result) HandleOpenedExec(details EventDetails) error {
-	event, err := r.createEvent(EventOpenedExec, details)
+func (r *Result) HandleOpenedExec(hostname string, details EventDetails) error {
+	event, err := r.createEvent(hostname, EventOpenedExec, details)
 	if err != nil {
 		return err
 	}

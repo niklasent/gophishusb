@@ -61,6 +61,7 @@ type CampaignStats struct {
 // that occurs during the campaign
 type Event struct {
 	Id         int64     `json:"-"`
+	Hostname   string    `json:"hostname"`
 	CampaignId int64     `json:"campaign_id"`
 	Time       time.Time `json:"time"`
 	Message    string    `json:"message"`
@@ -341,16 +342,16 @@ func PostCampaign(c *Campaign, uid int64) error {
 		log.Error(err)
 	}
 	// Insert all the results
-	resultMap := make(map[string]bool)
+	resultMap := make(map[int64]bool)
 	recipientIndex := 0
 	tx := db.Begin()
 	for _, g := range c.Groups {
 		// Insert a result for each target in the group
 		for _, t := range g.Targets {
-			if _, ok := resultMap[t.Hostname]; ok {
+			if _, ok := resultMap[t.Id]; ok {
 				continue
 			}
-			resultMap[t.Hostname] = true
+			resultMap[t.Id] = true
 			r := &Result{
 				BaseRecipient: BaseRecipient{
 					Hostname: t.Hostname,
