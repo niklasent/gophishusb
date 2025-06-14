@@ -31,7 +31,7 @@ import (
 // admin server
 type AdminServerOption func(*AdminServer)
 
-// AdminServer is an HTTP server that implements the administrative Gophish
+// AdminServer is an HTTP server that implements the administrative GophishUSB
 // handlers, including the dashboard and REST API.
 type AdminServer struct {
 	server  *http.Server

@@ -10,7 +10,7 @@ RUN gulp
 
 
 # Build Golang binary
-FROM golang:1.15.2 AS build-golang
+FROM golang:1.24.4 AS build-golang
 
 WORKDIR /go/src/github.com/niklasent/gophishusb
 COPY . .

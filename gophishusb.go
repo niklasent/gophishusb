@@ -1,11 +1,12 @@
 package main
 
 /*
-gophishusb - Open-Source USB Phishing Framework
+GophishUSB - An USB Phishing Framework based on Gophish
 
 The MIT License (MIT)
 
-Copyright (c) 2026 Niklas Entschladen
+Copyright (c) 2013 - 2020 Jordan Wright
+Copyright (c) 2025 Niklas Entschladen
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,9 +51,8 @@ const (
 )
 
 var (
-	configPath    = kingpin.Flag("config", "Location of config.json.").Default("./config.json").String()
-	disableMailer = kingpin.Flag("disable-mailer", "Disable the mailer (for use with multi-system deployments)").Bool()
-	mode          = kingpin.Flag("mode", fmt.Sprintf("Run the binary in one of the modes (%s, %s or %s)", modeAll, modeAdmin, modePhish)).
+	configPath = kingpin.Flag("config", "Location of config.json.").Default("./config.json").String()
+	mode       = kingpin.Flag("mode", fmt.Sprintf("Run the binary in one of the modes (%s, %s or %s)", modeAll, modeAdmin, modePhish)).
 			Default("all").Enum(modeAll, modeAdmin, modePhish)
 )
 

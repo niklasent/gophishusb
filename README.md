@@ -1,26 +1,28 @@
-![gophish logo](https://raw.github.com/niklasent/gophishusb/master/static/images/gophish_purple.png)
+![gophishusb logo](https://raw.githubusercontent.com/niklasent/gophishusb/master/static/images/gophishusb_purple.png)
 
 GophishUSB
 =======
 
-GophishUSB - A Gophish Fork for USB Phishing
+GophishUSB - An USB Phishing Framework based on Gophish 
 
-GophishUSB is a fork of the open-source phishing toolkit [Gophish](https://getgophish.com) designed for businesses and penetration testers. It provides the ability to setup and execute USB phishing engagements and security awareness training.  
+GophishUSB is a modification of the open-source phishing toolkit [Gophish](https://getgophish.com) designed for businesses and penetration testers. It provides the ability to setup and execute USB phishing engagements and security awareness training.  
 
-### How to works
+### How it works
 
+The functionality and design of GophishUSB is similar to the classic Gophish.
+However, GophishUSB is designed to simulate USB phishing attacks by using dedicated USB devices as well as a Windows agent on each target machine.  
 
-### Install
+Each USB device utilized for phishing needs to be prepared using the [GophishUSB Preparation Tool](https://github.com/niklasent/gophishusb-prep). The preparation tool also registers the USB device to the GophishUSB instance. Unregistered devices are not allowed for phishing events.
 
-Installation of Gophish is dead-simple - just download and extract the zip containing the [release for your system](https://github.com/niklasent/gophishusb/releases/), and run the binary. GophishUSB has binary releases for Windows, Mac, and Linux platforms.
+Moreover, the phishing detection is agent-basded, meaning that the [GophishUSB Windows Agent](https://github.com/niklasent/gophishusb-agent) needs to be installed on each target machine. Please note that macOS and Linux targets are not supported yet.
+The Windows agent periodically scans each mounted USB device for flag files indicating a successful phishing attack. If a flag file is found, a phishing event is posted to the GophishUSB instance managing the phishing campaigns.
+
+![gophishusb process](https://raw.githubusercontent.com/niklasent/gophishusb/master/static/images/gophishusb-process.png)
 
 ### Building From Source
-**If you are building from source, please note that Gophish requires Go v1.10 or above!**
+**If you are building from source, please note that GophishUSB requires Go v1.10 or above!**
 
-To build Gophish from source, simply run ```git clone https://github.com/niklasent/gophishusb.git``` and ```cd``` into the project source directory. Then, run ```go build```. After this, you should have a binary called ```gophishusb``` in the current directory.
-
-### Docker
-You can also use Gophish via the official Docker container [here](https://hub.docker.com/r/gophish/gophish/).
+To build GophishUSB from source, simply run ```git clone https://github.com/niklasent/gophishusb.git``` and ```cd``` into the project source directory. Then, run ```go build```. After this, you should have a binary called ```gophishusb``` in the current directory.
 
 ### Setup
 After running the GophishUSB binary, open an Internet browser to https://localhost:3333 and login with the default username and password listed in the log output.
@@ -35,11 +37,11 @@ Find a bug? Want more features? Find something missing in the documentation? Let
 
 ### License
 ```
-Gophish - A Gophish Fork for USB Phishing
+GophishUSB - An USB Phishing Framework based on Gophish
 
 The MIT License (MIT)
 
-Copyright (c) 2013-2020 Niklas Entschladen
+Copyright (c) 2013-2020 Jordan Wright
 Copyright (c) 2025 Niklas Entschladen
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
