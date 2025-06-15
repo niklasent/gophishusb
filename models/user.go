@@ -9,7 +9,7 @@ import (
 
 // ErrModifyingOnlyAdmin occurs when there is an attempt to modify the only
 // user account with the Admin role in such a way that there will be no user
-// accounts left in Gophish with that role.
+// accounts left in GophishUSB with that role.
 var ErrModifyingOnlyAdmin = errors.New("cannot remove the only administrator")
 
 // User represents the user model for gophish.
@@ -63,7 +63,7 @@ func PutUser(u *User) error {
 }
 
 // EnsureEnoughAdmins ensures that there is more than one user account in
-// Gophish with the Admin role. This function is meant to be called before
+// GophishUSB with the Admin role. This function is meant to be called before
 // modifying a user account with the Admin role in a non-revokable way.
 func EnsureEnoughAdmins() error {
 	role, err := GetRoleBySlug(RoleAdmin)

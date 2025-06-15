@@ -120,7 +120,7 @@ function deleteCampaign() {
 function completeCampaign() {
     Swal.fire({
         title: "Are you sure?",
-        text: "Gophish will stop processing events for this campaign",
+        text: "GophishUSB will stop processing events for this campaign",
         type: "warning",
         animation: false,
         showCancelButton: true,

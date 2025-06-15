@@ -398,7 +398,7 @@ func (as *AdminServer) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // ResetPassword handles the password reset flow when a password change is
-// required either by the Gophish system or an administrator.
+// required either by the GophishUSB system or an administrator.
 //
 // This handler is meant to be used when a user is required to reset their
 // password, not just when they want to.

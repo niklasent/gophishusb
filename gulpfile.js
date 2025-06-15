@@ -49,7 +49,7 @@ vendorjs = function () {
 }
 
 scripts = function () {
-    // Gophish app files - non-ES6
+    // GophishUSB app files - non-ES6
     return gulp.src([
             app_directory + 'autocomplete.js',
             app_directory + 'campaign_results.js',
