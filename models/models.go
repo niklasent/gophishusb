@@ -6,19 +6,18 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
 
 	"bitbucket.org/liamstask/goose/lib/goose"
 
 	mysql "github.com/go-sql-driver/mysql"
-	"github.com/gophish/gophish/auth"
-	"github.com/gophish/gophish/config"
+	"github.com/niklasent/gophishusb/auth"
+	"github.com/niklasent/gophishusb/config"
 
-	log "github.com/gophish/gophish/logger"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3" // Blank import needed to import sqlite3
+	log "github.com/niklasent/gophishusb/logger"
 )
 
 var db *gorm.DB
@@ -41,23 +40,12 @@ const InitialAdminApiToken = "GOPHISH_INITIAL_ADMIN_API_TOKEN"
 
 const (
 	CampaignInProgress string = "In progress"
-	CampaignQueued     string = "Queued"
-	CampaignCreated    string = "Created"
-	CampaignEmailsSent string = "Emails Sent"
 	CampaignComplete   string = "Completed"
-	EventSent          string = "Email Sent"
-	EventSendingError  string = "Error Sending Email"
-	EventOpened        string = "Email Opened"
-	EventClicked       string = "Clicked Link"
-	EventDataSubmit    string = "Submitted Data"
-	EventReported      string = "Email Reported"
-	EventProxyRequest  string = "Proxied request"
-	StatusSuccess      string = "Success"
-	StatusQueued       string = "Queued"
-	StatusSending      string = "Sending"
-	StatusUnknown      string = "Unknown"
-	StatusScheduled    string = "Scheduled"
-	StatusRetry        string = "Retrying"
+	EventActive        string = "Active"
+	EventMounted       string = "USB Mounted"
+	EventOpenedMacro   string = "Opened Macro"
+	EventOpenedExec    string = "Opened Executable"
+	EventOpenedAll     string = "Opened Everything" // This is no real event but needed for result status
 	Error              string = "Error"
 )
 
@@ -151,7 +139,7 @@ func Setup(c *config.Config) error {
 		switch conf.DBName {
 		case "mysql":
 			rootCertPool := x509.NewCertPool()
-			pem, err := ioutil.ReadFile(conf.DBSSLCaPath)
+			pem, err := os.ReadFile(conf.DBSSLCaPath)
 			if err != nil {
 				log.Error(err)
 				return err
@@ -176,7 +164,7 @@ func Setup(c *config.Config) error {
 		if err == nil {
 			break
 		}
-		if err != nil && i >= MaxDatabaseConnectionAttempts {
+		if i >= MaxDatabaseConnectionAttempts {
 			log.Error(err)
 			return err
 		}
@@ -187,10 +175,6 @@ func Setup(c *config.Config) error {
 	db.LogMode(false)
 	db.SetLogger(log.Logger)
 	db.DB().SetMaxOpenConns(1)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
 	// Migrate up to the latest version
 	err = goose.RunMigrationsOnDb(migrateConf, migrateConf.MigrationsDir, latest, db.DB())
 	if err != nil {
@@ -226,11 +210,11 @@ func Setup(c *config.Config) error {
 			return err
 		}
 	}
-	// If this is the first time the user is installing Gophish, then we will
+	// If this is the first time the user is installing GophishUSB, then we will
 	// generate a temporary password for the admin user.
 	//
 	// We do this here instead of in the block above where the admin is created
-	// since there's the chance the user executes Gophish and has some kind of
+	// since there's the chance the user executes GophishUSB and has some kind of
 	// error, then tries restarting it. If they didn't grab the password out of
 	// the logs, then they would have lost it.
 	//

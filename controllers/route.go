@@ -11,32 +11,30 @@ import (
 	"time"
 
 	"github.com/NYTimes/gziphandler"
-	"github.com/gophish/gophish/auth"
-	"github.com/gophish/gophish/config"
-	ctx "github.com/gophish/gophish/context"
-	"github.com/gophish/gophish/controllers/api"
-	log "github.com/gophish/gophish/logger"
-	mid "github.com/gophish/gophish/middleware"
-	"github.com/gophish/gophish/middleware/ratelimit"
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/util"
-	"github.com/gophish/gophish/worker"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/jordan-wright/unindexed"
+	"github.com/niklasent/gophishusb/auth"
+	"github.com/niklasent/gophishusb/config"
+	ctx "github.com/niklasent/gophishusb/context"
+	"github.com/niklasent/gophishusb/controllers/api"
+	log "github.com/niklasent/gophishusb/logger"
+	mid "github.com/niklasent/gophishusb/middleware"
+	"github.com/niklasent/gophishusb/middleware/ratelimit"
+	"github.com/niklasent/gophishusb/models"
+	"github.com/niklasent/gophishusb/util"
 )
 
 // AdminServerOption is a functional option that is used to configure the
 // admin server
 type AdminServerOption func(*AdminServer)
 
-// AdminServer is an HTTP server that implements the administrative Gophish
+// AdminServer is an HTTP server that implements the administrative GophishUSB
 // handlers, including the dashboard and REST API.
 type AdminServer struct {
 	server  *http.Server
-	worker  worker.Worker
 	config  config.AdminServer
 	limiter *ratelimit.PostLimiter
 }
@@ -62,24 +60,15 @@ var defaultTLSConfig = &tls.Config{
 	},
 }
 
-// WithWorker is an option that sets the background worker.
-func WithWorker(w worker.Worker) AdminServerOption {
-	return func(as *AdminServer) {
-		as.worker = w
-	}
-}
-
 // NewAdminServer returns a new instance of the AdminServer with the
 // provided config and options applied.
 func NewAdminServer(config config.AdminServer, options ...AdminServerOption) *AdminServer {
-	defaultWorker, _ := worker.New()
 	defaultServer := &http.Server{
 		ReadTimeout: 10 * time.Second,
 		Addr:        config.ListenURL,
 	}
 	defaultLimiter := ratelimit.NewPostLimiter()
 	as := &AdminServer{
-		worker:  defaultWorker,
 		server:  defaultServer,
 		limiter: defaultLimiter,
 		config:  config,
@@ -93,9 +82,6 @@ func NewAdminServer(config config.AdminServer, options ...AdminServerOption) *Ad
 
 // Start launches the admin server, listening on the configured address.
 func (as *AdminServer) Start() {
-	if as.worker != nil {
-		go as.worker.Start()
-	}
 	if as.config.UseTLS {
 		// Only support TLS 1.2 and above - ref #1691, #1689
 		as.server.TLSConfig = defaultTLSConfig
@@ -118,7 +104,7 @@ func (as *AdminServer) Shutdown() error {
 	return as.server.Shutdown(ctx)
 }
 
-// SetupAdminRoutes creates the routes for handling requests to the web interface.
+// registerRoutes creates the routes for handling requests to the web interface.
 // This function returns an http.Handler to be used in http.ListenAndServe().
 func (as *AdminServer) registerRoutes() {
 	router := mux.NewRouter()
@@ -129,17 +115,16 @@ func (as *AdminServer) registerRoutes() {
 	router.HandleFunc("/reset_password", mid.Use(as.ResetPassword, mid.RequireLogin))
 	router.HandleFunc("/campaigns", mid.Use(as.Campaigns, mid.RequireLogin))
 	router.HandleFunc("/campaigns/{id:[0-9]+}", mid.Use(as.CampaignID, mid.RequireLogin))
-	router.HandleFunc("/templates", mid.Use(as.Templates, mid.RequireLogin))
 	router.HandleFunc("/groups", mid.Use(as.Groups, mid.RequireLogin))
-	router.HandleFunc("/landing_pages", mid.Use(as.LandingPages, mid.RequireLogin))
-	router.HandleFunc("/sending_profiles", mid.Use(as.SendingProfiles, mid.RequireLogin))
 	router.HandleFunc("/settings", mid.Use(as.Settings, mid.RequireLogin))
+	router.HandleFunc("/targets", mid.Use(as.Targets, mid.RequireLogin))
+	router.HandleFunc("/usbs", mid.Use(as.Usbs, mid.RequireLogin))
+	router.HandleFunc("/usbs/{id:[0-9]+}", mid.Use(as.UsbID, mid.RequireLogin))
 	router.HandleFunc("/users", mid.Use(as.UserManagement, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	router.HandleFunc("/webhooks", mid.Use(as.Webhooks, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	router.HandleFunc("/impersonate", mid.Use(as.Impersonate, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	// Create the API routes
 	api := api.NewServer(
-		api.WithWorker(as.worker),
 		api.WithLimiter(as.limiter),
 	)
 	router.PathPrefix("/api/").Handler(api)
@@ -217,32 +202,32 @@ func (as *AdminServer) CampaignID(w http.ResponseWriter, r *http.Request) {
 	getTemplate(w, "campaign_results").ExecuteTemplate(w, "base", params)
 }
 
-// Templates handles the default path and template execution
-func (as *AdminServer) Templates(w http.ResponseWriter, r *http.Request) {
+// Targets handles the default path and template execution
+func (as *AdminServer) Targets(w http.ResponseWriter, r *http.Request) {
 	params := newTemplateParams(r)
-	params.Title = "Email Templates"
-	getTemplate(w, "templates").ExecuteTemplate(w, "base", params)
+	params.Title = "Targets"
+	getTemplate(w, "targets").ExecuteTemplate(w, "base", params)
+}
+
+// Usbs handles the default path and template execution
+func (as *AdminServer) Usbs(w http.ResponseWriter, r *http.Request) {
+	params := newTemplateParams(r)
+	params.Title = "USB Devices"
+	getTemplate(w, "usbs").ExecuteTemplate(w, "base", params)
+}
+
+// UsbID handles the default path and template execution
+func (as *AdminServer) UsbID(w http.ResponseWriter, r *http.Request) {
+	params := newTemplateParams(r)
+	params.Title = "USB Device Info"
+	getTemplate(w, "usb-device").ExecuteTemplate(w, "base", params)
 }
 
 // Groups handles the default path and template execution
 func (as *AdminServer) Groups(w http.ResponseWriter, r *http.Request) {
 	params := newTemplateParams(r)
-	params.Title = "Users & Groups"
+	params.Title = "Groups"
 	getTemplate(w, "groups").ExecuteTemplate(w, "base", params)
-}
-
-// LandingPages handles the default path and template execution
-func (as *AdminServer) LandingPages(w http.ResponseWriter, r *http.Request) {
-	params := newTemplateParams(r)
-	params.Title = "Landing Pages"
-	getTemplate(w, "landing_pages").ExecuteTemplate(w, "base", params)
-}
-
-// SendingProfiles handles the default path and template execution
-func (as *AdminServer) SendingProfiles(w http.ResponseWriter, r *http.Request) {
-	params := newTemplateParams(r)
-	params.Title = "Sending Profiles"
-	getTemplate(w, "sending_profiles").ExecuteTemplate(w, "base", params)
 }
 
 // Settings handles the changing of settings
@@ -336,7 +321,6 @@ func (as *AdminServer) Webhooks(w http.ResponseWriter, r *http.Request) {
 
 // Impersonate allows an admin to login to a user account without needing the password
 func (as *AdminServer) Impersonate(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method == "POST" {
 		username := r.FormValue("username")
 		u, err := models.GetUserByUsername(username)
@@ -414,7 +398,7 @@ func (as *AdminServer) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // ResetPassword handles the password reset flow when a password change is
-// required either by the Gophish system or an administrator.
+// required either by the GophishUSB system or an administrator.
 //
 // This handler is meant to be used when a user is required to reset their
 // password, not just when they want to.

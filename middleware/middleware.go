@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	ctx "github.com/gophish/gophish/context"
-	"github.com/gophish/gophish/models"
 	"github.com/gorilla/csrf"
+	ctx "github.com/niklasent/gophishusb/context"
+	"github.com/niklasent/gophishusb/models"
 )
 
 // CSRFExemptPrefixes are a list of routes that are exempt from CSRF protection
@@ -72,7 +72,7 @@ func GetContext(handler http.Handler) http.HandlerFunc {
 }
 
 // RequireAPIKey ensures that a valid API key is set as either the api_key GET
-// parameter, or a Bearer token.
+// parameter, or a Bearer token for a user.
 func RequireAPIKey(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -104,6 +104,44 @@ func RequireAPIKey(handler http.Handler) http.Handler {
 		}
 		r = ctx.Set(r, "user", u)
 		r = ctx.Set(r, "user_id", u.Id)
+		r = ctx.Set(r, "api_key", ak)
+		handler.ServeHTTP(w, r)
+	})
+}
+
+// RequireTargetAPIKey ensures that a valid API key is set as either the api_key GET
+// parameter, or a Bearer token for a target.
+func RequireTargetAPIKey(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Max-Age", "1000")
+			w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+			return
+		}
+		r.ParseForm()
+		ak := r.Form.Get("api_key")
+		// If we can't get the API key, we'll also check for the
+		// Authorization Bearer token
+		if ak == "" {
+			tokens, ok := r.Header["Authorization"]
+			if ok && len(tokens) >= 1 {
+				ak = tokens[0]
+				ak = strings.TrimPrefix(ak, "Bearer ")
+			}
+		}
+		if ak == "" {
+			JSONError(w, http.StatusUnauthorized, "API Key not set")
+			return
+		}
+		t, err := models.GetTargetByAPIKey(ak)
+		if err != nil {
+			JSONError(w, http.StatusUnauthorized, "Invalid API Key")
+			return
+		}
+		r = ctx.Set(r, "target", t)
+		r = ctx.Set(r, "target_id", t.Id)
 		r = ctx.Set(r, "api_key", ak)
 		handler.ServeHTTP(w, r)
 	})

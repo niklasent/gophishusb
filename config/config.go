@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	log "github.com/gophish/gophish/logger"
+	log "github.com/niklasent/gophishusb/logger"
 )
 
 // AdminServer represents the Admin server configuration details
@@ -39,11 +39,11 @@ type Config struct {
 	Logging        *log.Config `json:"logging"`
 }
 
-// Version contains the current gophish version
+// Version contains the current gophishusb version
 var Version = ""
 
 // ServerName is the server type that is returned in the transparency response.
-const ServerName = "gophish"
+const ServerName = "gophishusb"
 
 // LoadConfig loads the configuration from the specified filepath
 func LoadConfig(filepath string) (*Config, error) {

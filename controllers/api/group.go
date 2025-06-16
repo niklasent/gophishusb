@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	ctx "github.com/gophish/gophish/context"
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	ctx "github.com/niklasent/gophishusb/context"
+	log "github.com/niklasent/gophishusb/logger"
+	"github.com/niklasent/gophishusb/models"
 )
 
 // Groups returns a list of groups if requested via GET.
@@ -64,7 +64,7 @@ func (as *Server) GroupsSummary(w http.ResponseWriter, r *http.Request) {
 }
 
 // Group returns details about the requested group.
-// If the group is not valid, Group returns null.
+// If requested via PUT, APIGroup updates the group.
 func (as *Server) Group(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.ParseInt(vars["id"], 0, 64)
@@ -84,7 +84,6 @@ func (as *Server) Group(w http.ResponseWriter, r *http.Request) {
 		}
 		JSONResponse(w, models.Response{Success: true, Message: "Group deleted successfully!"}, http.StatusOK)
 	case r.Method == "PUT":
-		// Change this to get from URL and uid (don't bother with id in r.Body)
 		g = models.Group{}
 		err = json.NewDecoder(r.Body).Decode(&g)
 		if err != nil {

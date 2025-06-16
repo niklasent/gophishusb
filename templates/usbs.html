@@ -1,0 +1,33 @@
+{{define "body"}}
+<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+    <div class="row">
+        <h1 class="page-header">
+            USB Devices
+        </h1>
+    </div>
+    <div id="flashes" class="row"></div>
+    <div id="loading">
+        <i class="fa fa-spinner fa-spin fa-4x"></i>
+    </div>
+    <div id="emptyMessage" class="row" style="display:none;">
+        <div class="alert alert-info">
+            No USB devices found.
+        </div>
+    </div>
+    <div class="row">
+        <table id="usbTable" class="table" style="display:none;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Registered</th>
+                    <th class="col-md-2 no-sort"></th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}} {{define "scripts"}}
+<script src="/js/dist/app/usbs.min.js"></script>
+{{end}}

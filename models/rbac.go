@@ -3,10 +3,10 @@ package models
 /*
 Design:
 
-Gophish implements simple Role-Based-Access-Control (RBAC) to control access to
+GophishUSB implements simple Role-Based-Access-Control (RBAC) to control access to
 certain resources.
 
-By default, Gophish has two separate roles, with each user being assigned to
+By default, GophishUSB has two separate roles, with each user being assigned to
 a single role:
 
 * Admin  - Can modify all objects as well as system-level configuration
@@ -26,19 +26,19 @@ requested permission.
 */
 
 const (
-	// RoleAdmin is used for Gophish system administrators. Users with this
-	// role have the ability to manage all objects within Gophish, as well as
+	// RoleAdmin is used for GophishUSB system administrators. Users with this
+	// role have the ability to manage all objects within GophishUSB, as well as
 	// system-level configuration, such as users and URLs.
 	RoleAdmin = "admin"
-	// RoleUser is used for standard Gophish users. Users with this role can
-	// create, manage, and view Gophish objects and campaigns.
+	// RoleUser is used for standard GophishUSB users. Users with this role can
+	// create, manage, and view GophishUSB objects and campaigns.
 	RoleUser = "user"
 
 	// PermissionViewObjects determines if a role can view standard Gophish
 	// objects such as campaigns, groups, landing pages, etc.
 	PermissionViewObjects = "view_objects"
 	// PermissionModifyObjects determines if a role can create and modify
-	// standard Gophish objects.
+	// standard GophishUSB objects.
 	PermissionModifyObjects = "modify_objects"
 	// PermissionModifySystem determines if a role can manage system-level
 	// configuration.

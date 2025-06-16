@@ -1,80 +1,41 @@
 var campaigns = []
 // statuses is a helper map to point result statuses to ui classes
 var statuses = {
-    "Email Sent": {
+    "Active": {
         color: "#1abc9c",
         label: "label-success",
-        icon: "fa-envelope",
-        point: "ct-point-sent"
-    },
-    "Emails Sent": {
-        color: "#1abc9c",
-        label: "label-success",
-        icon: "fa-envelope",
-        point: "ct-point-sent"
+        icon: "fa-laptop",
+        point: "ct-point-active"
     },
     "In progress": {
         label: "label-primary"
     },
-    "Queued": {
-        label: "label-info"
-    },
     "Completed": {
         label: "label-success"
     },
-    "Email Opened": {
+    "USB Mounted": {
         color: "#f9bf3b",
         label: "label-warning",
-        icon: "fa-envelope",
-        point: "ct-point-opened"
+        icon: "fa-usb",
+        point: "ct-point-mount"
     },
-    "Email Reported": {
-        color: "#45d6ef",
-        label: "label-warning",
-        icon: "fa-bullhorne",
-        point: "ct-point-reported"
-    },
-    "Clicked Link": {
+    "Opened Macro": {
         color: "#F39C12",
-        label: "label-clicked",
-        icon: "fa-mouse-pointer",
-        point: "ct-point-clicked"
+        label: "label-macro",
+        icon: "fa-file",
+        point: "ct-point-macro"
     },
-    "Success": {
+    "Opened Executable": {
         color: "#f05b4f",
         label: "label-danger",
-        icon: "fa-exclamation",
-        point: "ct-point-clicked"
-    },
-    "Error": {
-        color: "#6c7a89",
-        label: "label-default",
-        icon: "fa-times",
-        point: "ct-point-error"
-    },
-    "Error Sending Email": {
-        color: "#6c7a89",
-        label: "label-default",
-        icon: "fa-times",
-        point: "ct-point-error"
-    },
-    "Submitted Data": {
-        color: "#f05b4f",
-        label: "label-danger",
-        icon: "fa-exclamation",
-        point: "ct-point-clicked"
+        icon: "fa-gear",
+        point: "ct-point-exec"
     },
     "Unknown": {
         color: "#6c7a89",
         label: "label-default",
         icon: "fa-question",
         point: "ct-point-error"
-    },
-    "Sending": {
-        color: "#428bca",
-        label: "label-primary",
-        icon: "fa-spinner",
-        point: "ct-point-sending"
     },
     "Campaign Created": {
         label: "label-success",
@@ -83,11 +44,10 @@ var statuses = {
 }
 
 var statsMapping = {
-    "sent": "Email Sent",
-    "opened": "Email Opened",
-    "email_reported": "Email Reported",
-    "clicked": "Clicked Link",
-    "submitted_data": "Submitted Data",
+    "active": "Active",
+    "mount": "USB Mounted",
+    "macro": "Opened Macro",
+    "exec": "Opened Executable",
 }
 
 function deleteCampaign(idx) {
@@ -176,8 +136,6 @@ function generateStatsPieCharts(campaigns) {
         })
     })
     $.each(stats_series_data, function (status, count) {
-        // I don't like this, but I guess it'll have to work.
-        // Turns submitted_data into Submitted Data
         if (!(status in statsMapping)) {
             return true
         }
@@ -209,8 +167,8 @@ function generateTimelineChart(campaigns) {
         var campaign_date = moment.utc(campaign.created_date).local()
         // Add it to the chart data
         campaign.y = 0
-        // Clicked events also contain our data submitted events
-        campaign.y += campaign.stats.clicked
+        campaign.y += campaign.stats.macro
+        campaign.y += campaign.stats.exec
         campaign.y = Math.floor((campaign.y / campaign.stats.total) * 100)
         // Add the data to the overview chart
         overview_data.push({
@@ -226,7 +184,7 @@ function generateTimelineChart(campaigns) {
             type: 'areaspline'
         },
         title: {
-            text: 'Phishing Success Overview'
+            text: 'USB Phishing Success Overview'
         },
         xAxis: {
             type: 'datetime',
@@ -302,25 +260,21 @@ $(document).ready(function () {
                             targets: "no-sort"
                         },
                         {
-                            className: "color-sent",
+                            className: "color-active",
                             targets: [2]
                         },
                         {
-                            className: "color-opened",
+                            className: "color-mount",
                             targets: [3]
                         },
                         {
-                            className: "color-clicked",
+                            className: "color-macro",
                             targets: [4]
                         },
                         {
-                            className: "color-success",
+                            className: "color-exec",
                             targets: [5]
                         },
-                        {
-                            className: "color-reported",
-                            targets: [6]
-                        }
                     ],
                     order: [
                         [1, "desc"]
@@ -332,22 +286,16 @@ $(document).ready(function () {
                     var label = statuses[campaign.status].label || "label-default";
                     //section for tooltips on the status of a campaign to show some quick stats
                     var launchDate;
-                    if (moment(campaign.launch_date).isAfter(moment())) {
-                        launchDate = "Scheduled to start: " + moment(campaign.launch_date).format('MMMM Do YYYY, h:mm:ss a')
-                        var quickStats = launchDate + "<br><br>" + "Number of recipients: " + campaign.stats.total
-                    } else {
-                        launchDate = "Launch Date: " + moment(campaign.launch_date).format('MMMM Do YYYY, h:mm:ss a')
-                        var quickStats = launchDate + "<br><br>" + "Number of recipients: " + campaign.stats.total + "<br><br>" + "Emails opened: " + campaign.stats.opened + "<br><br>" + "Emails clicked: " + campaign.stats.clicked + "<br><br>" + "Submitted Credentials: " + campaign.stats.submitted_data + "<br><br>" + "Errors : " + campaign.stats.error + "<br><br>" + "Reported : " + campaign.stats.email_reported
-                    }
+                    launchDate = "Launch Date: " + moment(campaign.created_date).format('MMMM Do YYYY, h:mm:ss a')
+                    var quickStats = launchDate + "<br><br>" + "Number of targets: " + campaign.stats.active + "<br><br>" + "USBs mounted: " + campaign.stats.mount + "<br><br>" + "Macros opened: " + campaign.stats.macro + "<br><br>" + "Executables opened: " + campaign.stats.exec
                     // Add it to the list
                     campaignRows.push([
                         escapeHtml(campaign.name),
                         campaign_date,
-                        campaign.stats.sent,
-                        campaign.stats.opened,
-                        campaign.stats.clicked,
-                        campaign.stats.submitted_data,
-                        campaign.stats.email_reported,
+                        campaign.stats.active,
+                        campaign.stats.mount,
+                        campaign.stats.macro,
+                        campaign.stats.exec,
                         "<span class=\"label " + label + "\" data-toggle=\"tooltip\" data-placement=\"right\" data-html=\"true\" title=\"" + quickStats + "\">" + campaign.status + "</span>",
                         "<div class='pull-right'><a class='btn btn-primary' href='/campaigns/" + campaign.id + "' data-toggle='tooltip' data-placement='left' title='View Results'>\
                     <i class='fa fa-bar-chart'></i>\

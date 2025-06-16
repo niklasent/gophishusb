@@ -1,9 +1,10 @@
 /*
-gophish - Open-Source Phishing Framework
+GophishUSB - An USB Phishing Framework based on Gophish
 
 The MIT License (MIT)
 
 Copyright (c) 2013 Jordan Wright
+Copyright (c) 2025 Niklas Rntschladen
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,5 +25,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-// Package controllers is responsible for setting up the routing and controllers (http.Handlers) for gophish.
+// Package controllers is responsible for setting up the routing and controllers (http.Handlers) for gophishusb.
 package controllers

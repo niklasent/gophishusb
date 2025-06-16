@@ -4,13 +4,13 @@ import (
 	"errors"
 	"time"
 
-	log "github.com/gophish/gophish/logger"
+	log "github.com/niklasent/gophishusb/logger"
 )
 
 // ErrModifyingOnlyAdmin occurs when there is an attempt to modify the only
 // user account with the Admin role in such a way that there will be no user
-// accounts left in Gophish with that role.
-var ErrModifyingOnlyAdmin = errors.New("Cannot remove the only administrator")
+// accounts left in GophishUSB with that role.
+var ErrModifyingOnlyAdmin = errors.New("cannot remove the only administrator")
 
 // User represents the user model for gophish.
 type User struct {
@@ -63,7 +63,7 @@ func PutUser(u *User) error {
 }
 
 // EnsureEnoughAdmins ensures that there is more than one user account in
-// Gophish with the Admin role. This function is meant to be called before
+// GophishUSB with the Admin role. This function is meant to be called before
 // modifying a user account with the Admin role in a non-revokable way.
 func EnsureEnoughAdmins() error {
 	role, err := GetRoleBySlug(RoleAdmin)
@@ -109,29 +109,6 @@ func DeleteUser(id int64) error {
 		}
 	}
 	log.Infof("Deleting pages for user ID %d", id)
-	// Delete the landing pages
-	pages, err := GetPages(id)
-	if err != nil {
-		return err
-	}
-	for _, page := range pages {
-		err = DeletePage(page.Id, id)
-		if err != nil {
-			return err
-		}
-	}
-	// Delete the templates
-	log.Infof("Deleting templates for user ID %d", id)
-	templates, err := GetTemplates(id)
-	if err != nil {
-		return err
-	}
-	for _, template := range templates {
-		err = DeleteTemplate(template.Id, id)
-		if err != nil {
-			return err
-		}
-	}
 	// Delete the groups
 	log.Infof("Deleting groups for user ID %d", id)
 	groups, err := GetGroups(id)
@@ -140,18 +117,6 @@ func DeleteUser(id int64) error {
 	}
 	for _, group := range groups {
 		err = DeleteGroup(&group)
-		if err != nil {
-			return err
-		}
-	}
-	// Delete the sending profiles
-	log.Infof("Deleting sending profiles for user ID %d", id)
-	profiles, err := GetSMTPs(id)
-	if err != nil {
-		return err
-	}
-	for _, profile := range profiles {
-		err = DeleteSMTP(profile.Id, id)
 		if err != nil {
 			return err
 		}

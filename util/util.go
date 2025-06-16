@@ -6,123 +6,14 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/csv"
 	"encoding/pem"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math/big"
-	"net/http"
-	"net/mail"
 	"os"
-	"regexp"
 	"time"
 
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
-	"github.com/jordan-wright/email"
+	log "github.com/niklasent/gophishusb/logger"
 )
-
-var (
-	firstNameRegex = regexp.MustCompile(`(?i)first[\s_-]*name`)
-	lastNameRegex  = regexp.MustCompile(`(?i)last[\s_-]*name`)
-	emailRegex     = regexp.MustCompile(`(?i)email`)
-	positionRegex  = regexp.MustCompile(`(?i)position`)
-)
-
-// ParseMail takes in an HTTP Request and returns an Email object
-// TODO: This function will likely be changed to take in a []byte
-func ParseMail(r *http.Request) (email.Email, error) {
-	e := email.Email{}
-	m, err := mail.ReadMessage(r.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-	body, err := ioutil.ReadAll(m.Body)
-	e.HTML = body
-	return e, err
-}
-
-// ParseCSV contains the logic to parse the user provided csv file containing Target entries
-func ParseCSV(r *http.Request) ([]models.Target, error) {
-	mr, err := r.MultipartReader()
-	ts := []models.Target{}
-	if err != nil {
-		return ts, err
-	}
-	for {
-		part, err := mr.NextPart()
-		if err == io.EOF {
-			break
-		}
-		// Skip the "submit" part
-		if part.FileName() == "" {
-			continue
-		}
-		defer part.Close()
-		reader := csv.NewReader(part)
-		reader.TrimLeadingSpace = true
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		fi := -1
-		li := -1
-		ei := -1
-		pi := -1
-		fn := ""
-		ln := ""
-		ea := ""
-		ps := ""
-		for i, v := range record {
-			switch {
-			case firstNameRegex.MatchString(v):
-				fi = i
-			case lastNameRegex.MatchString(v):
-				li = i
-			case emailRegex.MatchString(v):
-				ei = i
-			case positionRegex.MatchString(v):
-				pi = i
-			}
-		}
-		if fi == -1 && li == -1 && ei == -1 && pi == -1 {
-			continue
-		}
-		for {
-			record, err := reader.Read()
-			if err == io.EOF {
-				break
-			}
-			if fi != -1 && len(record) > fi {
-				fn = record[fi]
-			}
-			if li != -1 && len(record) > li {
-				ln = record[li]
-			}
-			if ei != -1 && len(record) > ei {
-				csvEmail, err := mail.ParseAddress(record[ei])
-				if err != nil {
-					continue
-				}
-				ea = csvEmail.Address
-			}
-			if pi != -1 && len(record) > pi {
-				ps = record[pi]
-			}
-			t := models.Target{
-				BaseRecipient: models.BaseRecipient{
-					FirstName: fn,
-					LastName:  ln,
-					Email:     ea,
-					Position:  ps,
-				},
-			}
-			ts = append(ts, t)
-		}
-	}
-	return ts, nil
-}
 
 // CheckAndCreateSSL is a helper to setup self-signed certificates for the administrative interface.
 func CheckAndCreateSSL(cp string, kp string) error {

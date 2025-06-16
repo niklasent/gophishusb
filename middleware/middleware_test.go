@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gophish/gophish/config"
-	ctx "github.com/gophish/gophish/context"
-	"github.com/gophish/gophish/models"
+	"github.com/niklasent/gophishusb/config"
+	ctx "github.com/niklasent/gophishusb/context"
+	"github.com/niklasent/gophishusb/models"
 )
 
 var successHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +126,20 @@ func TestRequireAPIKey(t *testing.T) {
 	response := httptest.NewRecorder()
 	// Test that making a request without an API key is denied
 	RequireAPIKey(successHandler).ServeHTTP(response, req)
+	expected := http.StatusUnauthorized
+	got := response.Code
+	if got != expected {
+		t.Fatalf("incorrect status code received. expected %d got %d", expected, got)
+	}
+}
+
+func TestRequireTargetAPIKey(t *testing.T) {
+	setupTest(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	// Test that making a request without an API key is denied
+	RequireTargetAPIKey(successHandler).ServeHTTP(response, req)
 	expected := http.StatusUnauthorized
 	got := response.Code
 	if got != expected {
