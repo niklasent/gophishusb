@@ -10,11 +10,11 @@ GophishUSB is a modification of the open-source phishing toolkit [Gophish](https
 ### How it works
 
 The functionality and design of GophishUSB is similar to the classic Gophish.
-However, GophishUSB is designed to simulate USB phishing attacks by using dedicated USB devices as well as a Windows agent on each target machine.  
+However, GophishUSB is designed to simulate USB phishing attacks by using dedicated USB devices as well as Windows agents for the target machines.  
 
-Each USB device utilized for phishing needs to be prepared using the [GophishUSB Preparation Tool](https://github.com/niklasent/gophishusb-prep). The preparation tool also registers the USB device to the GophishUSB instance. Unregistered devices are not allowed for phishing events.
+Each USB device utilized for phishing needs to be prepared using the [GophishUSB Preparation Tool](https://github.com/niklasent/gophishusb-prep). The preparation tool also registers the USB device to the GophishUSB instance. Unregistered devices are not invalid for phishing events.
 
-Moreover, the phishing detection is agent-basded, meaning that the [GophishUSB Windows Agent](https://github.com/niklasent/gophishusb-agent) needs to be installed on each target machine. Please note that macOS and Linux targets are not supported yet.
+Moreover, the phishing detection is agent-basded, meaning that the [GophishUSB Windows Agent](https://github.com/niklasent/gophishusb-agent) needs to be installed on every target machine. Please note that macOS and Linux targets are not supported yet.
 The Windows agent periodically scans each mounted USB device for flag files indicating a successful phishing attack. If a flag file is found, a phishing event is posted to the GophishUSB instance managing the phishing campaigns.
 
 ![gophishusb process](https://raw.githubusercontent.com/niklasent/gophishusb/master/static/images/gophishusb-process.png)
