@@ -64,7 +64,7 @@ func (as *Server) GroupsSummary(w http.ResponseWriter, r *http.Request) {
 }
 
 // Group returns details about the requested group.
-// If the group is not valid, Group returns null.
+// If requested via PUT, APIGroup updates the group.
 func (as *Server) Group(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.ParseInt(vars["id"], 0, 64)

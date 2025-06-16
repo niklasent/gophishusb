@@ -104,7 +104,7 @@ func (ps *PhishingServer) Shutdown() error {
 	return ps.server.Shutdown(ctx)
 }
 
-// CreatePhishingRouter creates the router that handles phishing connections.
+// registerRoutes creates the router that handles phishing connections.
 func (ps *PhishingServer) registerRoutes() {
 	router := mux.NewRouter()
 	fileServer := http.FileServer(unindexed.Dir("./static/endpoint/"))
@@ -142,7 +142,7 @@ func (ps *PhishingServer) TargetPingHandler(w http.ResponseWriter, r *http.Reque
 	api.JSONResponse(w, models.Response{Success: true, Message: "Event OK"}, http.StatusOK)
 }
 
-// PhishHandler handles incoming client connections and registers the USB mount action
+// PhishMountHandler handles incoming client connections and registers the USB mount action
 func (ps *PhishingServer) PhishMountHandler(w http.ResponseWriter, r *http.Request) {
 	// Get event details from agent
 	d := models.EventDetails{}

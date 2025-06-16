@@ -104,7 +104,7 @@ func (as *AdminServer) Shutdown() error {
 	return as.server.Shutdown(ctx)
 }
 
-// SetupAdminRoutes creates the routes for handling requests to the web interface.
+// registerRoutes creates the routes for handling requests to the web interface.
 // This function returns an http.Handler to be used in http.ListenAndServe().
 func (as *AdminServer) registerRoutes() {
 	router := mux.NewRouter()
