@@ -133,6 +133,20 @@ func TestRequireAPIKey(t *testing.T) {
 	}
 }
 
+func TestRequireTargetAPIKey(t *testing.T) {
+	setupTest(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	// Test that making a request without an API key is denied
+	RequireTargetAPIKey(successHandler).ServeHTTP(response, req)
+	expected := http.StatusUnauthorized
+	got := response.Code
+	if got != expected {
+		t.Fatalf("incorrect status code received. expected %d got %d", expected, got)
+	}
+}
+
 func TestCORSHeaders(t *testing.T) {
 	setupTest(t)
 	req := httptest.NewRequest(http.MethodOptions, "/", nil)
