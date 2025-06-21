@@ -71,14 +71,13 @@ func GetUsb(id int64, uid int64) (Usb, error) {
 	return u, err
 }
 
-// RegisterUsb registers a new USB and creates a database entry.
-func RegisterUsb(u *Usb, uid int64) error {
+// PostUsb registers a new USB and creates a database entry.
+func PostUsb(u *Usb) error {
 	err := u.Validate()
 	if err != nil {
 		return err
 	}
 	// Fill in the details
-	u.UserId = uid
 	u.RegisteredDate = time.Now().UTC()
 	// Insert into the DB
 	err = db.Save(u).Error

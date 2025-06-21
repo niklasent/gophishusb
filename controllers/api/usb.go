@@ -29,7 +29,8 @@ func (as *Server) Usbs(w http.ResponseWriter, r *http.Request) {
 			JSONResponse(w, models.Response{Success: false, Message: "Invalid JSON structure"}, http.StatusBadRequest)
 			return
 		}
-		err = models.RegisterUsb(&u, ctx.Get(r, "user_id").(int64))
+		u.UserId = ctx.Get(r, "user_id").(int64)
+		err = models.PostUsb(&u)
 		if err != nil {
 			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 			return
