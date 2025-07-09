@@ -60,7 +60,7 @@ func (s *ModelsSuite) TestPutUser(c *check.C) {
 func (s *ModelsSuite) TestGeneratedAPIKey(c *check.C) {
 	u, err := GetUser(1)
 	c.Assert(err, check.Equals, nil)
-	c.Assert(u.ApiKey, check.Not(check.Equals), "12345678901234567890123456789012")
+	c.Assert(u.ApiKey, check.Not(check.Equals), "123456789012345678901234567890!!")
 }
 
 func (s *ModelsSuite) verifyRoleCount(c *check.C, roleID, expected int64) {
