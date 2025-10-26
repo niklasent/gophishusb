@@ -17,20 +17,6 @@ import (
 // If requested via POST, APITargets creates a new target and returns a reference to it.
 func (as *Server) Targets(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case r.Method == "GET":
-		vars := mux.Vars(r)
-		id, _ := strconv.ParseInt(vars["id"], 0, 64)
-		g, err := models.GetGroup(id, ctx.Get(r, "user_id").(int64))
-		if err != nil {
-			JSONResponse(w, models.Response{Success: false, Message: "Group not found"}, http.StatusNotFound)
-			return
-		}
-		ts, err := models.GetTargets(g.Id)
-		if err != nil {
-			JSONResponse(w, models.Response{Success: false, Message: "Targets not found"}, http.StatusNotFound)
-			return
-		}
-		JSONResponse(w, ts, http.StatusOK)
 	//POST: Register a new target and return it with key
 	case r.Method == "POST":
 		t := models.Target{}

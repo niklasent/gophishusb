@@ -39,8 +39,8 @@ func (t *Target) Validate() error {
 	return nil
 }
 
-// GetTargets performs a one-to-many select to get all the Targets for a Group
-func GetTargets(gid int64) ([]Target, error) {
+// GetGroupTargets performs a one-to-many select to get all the Targets for a Group
+func GetGroupTargets(gid int64) ([]Target, error) {
 	ts := []Target{}
 	err := db.Table("targets").Select("targets.id, targets.registered_date, targets.last_seen, targets.hostname, targets.os").Where("group_id=?", gid).Scan(&ts).Error
 	return ts, err
@@ -128,8 +128,8 @@ func PingTarget(t *Target) error {
 	}
 	err = tx.Commit().Error
 	if err != nil {
-		log.Error(err)
 		tx.Rollback()
+		log.Error(err)
 		return err
 	}
 	return nil
