@@ -141,12 +141,8 @@ var api = {
     },
     // targets contains the endpoints for /targets
     targets: {
-        // get() - Queries the API for GET /targets
-        get: function () {
-            return query("/targets/", "GET", {}, false)
-        },
         // post() - Posts a target to POST /targets
-        post: function (group) {
+        post: function (target) {
             return query("/targets/", "POST", target, false)
         },
     },
@@ -155,10 +151,6 @@ var api = {
         // get() - Queries the API for GET /targets/:id
         get: function (id) {
             return query("/targets/" + id, "GET", {}, false)
-        },
-        // put() - Puts a target to PUT /targets/:id
-        put: function (target) {
-            return query("/targets/" + target.id, "PUT", target, false)
         },
         // delete() - Deletes a target at DELETE /targets/:id
         delete: function (id) {
