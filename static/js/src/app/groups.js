@@ -127,12 +127,16 @@ function load() {
                         escapeHtml(group.name),
                         escapeHtml(group.num_targets),
                         moment(group.modified_date).format('MMMM Do YYYY, h:mm:ss a'),
-                        "<div class='pull-right'><button class='btn btn-primary' data-toggle='modal' data-backdrop='static' data-target='#modal' onclick='edit(" + group.id + ")'>\
-                    <i class='fa fa-pencil'></i>\
-                    </button>\
-                    <button class='btn btn-danger' onclick='deleteGroup(" + group.id + ")'>\
-                    <i class='fa fa-trash-o'></i>\
-                    </button></div>"
+                        "<div class='pull-right'>\
+                        <a class='btn btn-primary' href='/groups/" + group.id + "' data-toggle='tooltip' data-placement='left' title='View Targets'>\
+                        <i class='fa fa-laptop'></i>\
+                        </a>\
+                        <button class='btn btn-primary' data-toggle='modal' data-backdrop='static' data-target='#modal' onclick='edit(" + group.id + ")'>\
+                        <i class='fa fa-pencil'></i>\
+                        </button>\
+                        <button class='btn btn-danger' onclick='deleteGroup(" + group.id + ")'>\
+                        <i class='fa fa-trash-o'></i>\
+                        </button></div>"
                     ])
                 })
                 groupTable.rows.add(groupRows).draw()
@@ -141,6 +145,7 @@ function load() {
             }
         })
         .error(function () {
+            $("#loading").hide()
             errorFlash("Error fetching groups")
         })
 }

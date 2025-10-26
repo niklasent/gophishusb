@@ -54,7 +54,7 @@ func GetGroups(uid int64) ([]Group, error) {
 		return gs, err
 	}
 	for i := range gs {
-		gs[i].Targets, err = GetTargets(gs[i].Id)
+		gs[i].Targets, err = GetGroupTargets(gs[i].Id)
 		if err != nil {
 			log.Error(err)
 		}
@@ -91,7 +91,7 @@ func GetGroup(id int64, uid int64) (Group, error) {
 		log.Error(err)
 		return g, err
 	}
-	g.Targets, err = GetTargets(g.Id)
+	g.Targets, err = GetGroupTargets(g.Id)
 	if err != nil {
 		log.Error(err)
 	}
@@ -123,7 +123,7 @@ func GetGroupByName(n string, uid int64) (Group, error) {
 		log.Error(err)
 		return g, err
 	}
-	g.Targets, err = GetTargets(g.Id)
+	g.Targets, err = GetGroupTargets(g.Id)
 	if err != nil {
 		log.Error(err)
 	}

@@ -56,6 +56,7 @@ scripts = function () {
             app_directory + 'campaigns.js',
             app_directory + 'dashboard.js',
             app_directory + 'groups.js',
+            app_directory + 'group-targets.js',
             app_directory + 'usbs.js',
             app_directory + 'settings.js',
             app_directory + 'gophishusb.js',

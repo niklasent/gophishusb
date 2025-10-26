@@ -1,25 +1,26 @@
-var usbs = []
+var group = {}
+var targets = []
 
-var deleteUsb = function (id) {
-    var usb = usbs.find(function (x) {
+var deleteTarget = function (id) {
+    var target = targets.find(function (x) {
         return x.id === id
     })
-    if (!usb) {
+    if (!target) {
         return
     }
     Swal.fire({
         title: "Are you sure?",
-        text: "This will delete the USB device. This can't be undone!",
+        text: "This will delete the target. This can't be undone!",
         type: "warning",
         animation: false,
         showCancelButton: true,
-        confirmButtonText: "Delete " + escapeHtml(usb.name),
+        confirmButtonText: "Delete " + escapeHtml(target.hostname),
         confirmButtonColor: "#428bca",
         reverseButtons: true,
         allowOutsideClick: false,
         preConfirm: function () {
             return new Promise(function (resolve, reject) {
-                api.usbId.delete(id)
+                api.targetId.delete(id)
                     .success(function (msg) {
                         resolve()
                     })
@@ -31,8 +32,8 @@ var deleteUsb = function (id) {
     }).then(function (result) {
         if (result.value){
             Swal.fire(
-                'USB Deleted!',
-                'This USB device has been deleted!',
+                'Target Deleted!',
+                'This target has been deleted!',
                 'success'
             );
         }
@@ -43,44 +44,51 @@ var deleteUsb = function (id) {
 }
 
 function load() {
-    $("#usbTable").hide()
+    group.id = window.location.pathname.split('/').slice(-1)[0]
+    $("#targetTable").hide()
     $("#emptyMessage").hide()
     $("#loading").show()
-    api.usbs.get()
-        .success(function (response) {
+    api.groupId.get(group.id)
+        .success(function (g) {
+            group = g
+            $("title").text(group.name + " - Targets")
+            // Set the title
+            $("#page-title").text("Targets of " + group.name)
             $("#loading").hide()
-            if (response.length > 0) {
-                usbs = response
+            targets = group.targets
+            if (targets.length > 0) {
                 $("#emptyMessage").hide()
-                $("#usbTable").show()
-                var usbTable = $("#usbTable").DataTable({
+                $("#targetTable").show()
+                var targetTable = $("#targetTable").DataTable({
                     destroy: true,
                     columnDefs: [{
                         orderable: false,
                         targets: "no-sort"
                     }]
                 });
-                usbTable.clear();
-                usbRows = []
-                $.each(usbs, function (i, usb) {
-                    usbRows.push([
-                        escapeHtml(usb.name),
-                        moment(usb.registered_date).format('MMMM Do YYYY, h:mm:ss a'),
+                targetTable.clear();
+                targetRows = []
+                $.each(targets, function (i, target) {
+                    targetRows.push([
+                        escapeHtml(target.hostname),
+                        escapeHtml(target.os),
+                        moment(target.registered_date).format('MMMM Do YYYY, h:mm:ss a'),
+                        moment(target.last_seen).format('MMMM Do YYYY, h:mm:ss a'),
                         "<div class='pull-right'>\
                         </button>\
-                        <button class='btn btn-danger' onclick='deleteUsb(" + usb.id + ")'>\
+                        <button class='btn btn-danger' onclick='deleteTarget(" + target.id + ")'>\
                         <i class='fa fa-trash-o'></i>\
                         </button></div>"
                     ])
                 })
-                usbTable.rows.add(usbRows).draw()
+                targetTable.rows.add(targetRows).draw()
             } else {
                 $("#emptyMessage").show()
             }
         })
         .error(function () {
             $("#loading").hide()
-            errorFlash("Error fetching USB devices")
+            errorFlash("Group not found!")
         })
 }
 
