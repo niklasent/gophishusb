@@ -79,6 +79,7 @@ function load() {
             }
         })
         .error(function () {
+            $("#loading").hide()
             errorFlash("Error fetching USB devices")
         })
 }
