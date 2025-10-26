@@ -116,6 +116,7 @@ func (as *AdminServer) registerRoutes() {
 	router.HandleFunc("/campaigns", mid.Use(as.Campaigns, mid.RequireLogin))
 	router.HandleFunc("/campaigns/{id:[0-9]+}", mid.Use(as.CampaignID, mid.RequireLogin))
 	router.HandleFunc("/groups", mid.Use(as.Groups, mid.RequireLogin))
+	router.HandleFunc("/groups/{id:[0-9]+}", mid.Use(as.GroupID, mid.RequireLogin))
 	router.HandleFunc("/settings", mid.Use(as.Settings, mid.RequireLogin))
 	router.HandleFunc("/targets", mid.Use(as.Targets, mid.RequireLogin))
 	router.HandleFunc("/usbs", mid.Use(as.Usbs, mid.RequireLogin))
@@ -228,6 +229,13 @@ func (as *AdminServer) Groups(w http.ResponseWriter, r *http.Request) {
 	params := newTemplateParams(r)
 	params.Title = "Groups"
 	getTemplate(w, "groups").ExecuteTemplate(w, "base", params)
+}
+
+// GroupID handles the default path and template execution
+func (as *AdminServer) GroupID(w http.ResponseWriter, r *http.Request) {
+	params := newTemplateParams(r)
+	params.Title = "Group Targets"
+	getTemplate(w, "group-targets").ExecuteTemplate(w, "base", params)
 }
 
 // Settings handles the changing of settings
